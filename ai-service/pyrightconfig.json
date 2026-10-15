@@ -1,0 +1,18 @@
+{
+  "pythonVersion": "3.12",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "vendor",
+    ".venv"
+  ],
+  "extraPaths": [
+    "c:/Proyectos/Sumaq Barber/ai-service",
+    "vendor/HairFastGAN"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none"
+}

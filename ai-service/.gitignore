@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+vendor/HairFastGAN/pretrained_models/
+vendor/HairFastGAN/checkpoints/

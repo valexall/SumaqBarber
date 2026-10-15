@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  CUSTOMER
+  BARBER
+  OWNER
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hashed password
+  firstName String
+  lastName  String
+  phone     String?  @unique
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  barberProfile BarberProfile?
+  appointmentsAsCustomer Appointment[] @relation("CustomerAppointments")
+  appointmentsAsBarber   Appointment[] @relation("BarberAppointments")
+
+  @@index([role])
+  @@index([phone])
+}
+
+model BarberProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio         String?
+  experience  Int?     // Years of experience
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  duration    Int      // Duration in minutes
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  appointments Appointment[]
+
+  @@index([isActive])
+}
+
+model Appointment {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    User     @relation("CustomerAppointments", fields: [customerId], references: [id])
+  barberId    String
+  barber      User     @relation("BarberAppointments", fields: [barberId], references: [id])
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  
+  date        DateTime // Date and time of the appointment
+  status      AppointmentStatus @default(PENDING)
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([barberId, date])
+  @@index([customerId, date])
+  @@index([status])
+}

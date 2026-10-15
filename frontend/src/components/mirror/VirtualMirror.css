@@ -1,0 +1,509 @@
+/* ============================================================
+   VIRTUAL MIRROR COMPONENT
+   ============================================================ */
+
+.vm-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  width: 100%;
+  gap: 10px;
+}
+
+/* ── Hidden elements ───────────────────────────────────────── */
+.vm-canvas-hidden {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* ── Viewport ──────────────────────────────────────────────── */
+.vm-viewport {
+  background: #090d16;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+  flex: 1;
+  min-height: 380px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Video feed (mirrored selfie mode) ─────────────────────── */
+.vm-video-feed {
+  display: block;
+  height: 100%;
+  left: 0;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  transform: scaleX(-1);
+  width: 100%;
+  z-index: 1;
+  transition: opacity 0.25s ease;
+}
+
+/* ── Real-Time 60 FPS AR Tracking Canvas ──────────────────── */
+.vm-ar-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.vm-ar-canvas.is-visible {
+  opacity: 1;
+}
+
+/* ── AI Result Layer ───────────────────────────────────────── */
+.vm-ai-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.vm-ai-layer.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vm-ai-layer.is-full {
+  opacity: 1;
+}
+
+.vm-ai-layer.is-split {
+  opacity: 1;
+}
+
+.vm-ai-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Split Slider Control ──────────────────────────────────── */
+.vm-split-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 4;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.vm-split-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: #d4af37;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.8);
+}
+
+.vm-split-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #151a26;
+  border: 2px solid #d4af37;
+  color: #d4af37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.vm-split-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+/* ── Face Guide (Bosquejo de encuadre) ──────────────────────── */
+.vm-face-guide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.vm-face-oval {
+  width: 175px;
+  height: 235px;
+  border: 2px dashed rgba(212, 175, 55, 0.75);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.25), inset 0 0 24px rgba(212, 175, 55, 0.08);
+  animation: guidePulse 3s ease-in-out infinite;
+}
+
+@keyframes guidePulse {
+  0%, 100% { border-color: rgba(212, 175, 55, 0.8); transform: scale(1); }
+  50% { border-color: rgba(212, 175, 55, 0.45); transform: scale(0.985); }
+}
+
+.vm-guide-text {
+  margin-top: 14px;
+  background: rgba(9, 13, 22, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 5px 14px;
+  border-radius: 14px;
+  color: #f6d878;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Placeholders ──────────────────────────────────────────── */
+.vm-placeholder {
+  align-items: center;
+  color: rgba(220, 226, 240, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  justify-content: center;
+  left: 0;
+  padding: 30px;
+  position: absolute;
+  text-align: center;
+  top: 0;
+  width: 100%;
+  z-index: 3;
+  background: radial-gradient(circle at center, rgba(16, 24, 40, 0.95), #090d16);
+}
+
+.vm-placeholder-icon {
+  color: #d4af37;
+  opacity: 0.9;
+}
+
+.vm-placeholder h4 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.vm-placeholder p {
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 320px;
+  color: rgba(180, 190, 215, 0.75);
+}
+
+.vm-placeholder--denied .vm-placeholder-icon,
+.vm-placeholder--error .vm-placeholder-icon {
+  color: #f87171;
+}
+
+/* ── Action Buttons ────────────────────────────────────────── */
+.vm-action-btn {
+  align-items: center;
+  background: linear-gradient(135deg, #d4af37, #b8972e);
+  border: none;
+  border-radius: 10px;
+  color: #0b0e14;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 20px;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.3);
+  transition: all 0.2s ease;
+}
+
+.vm-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.45);
+  background: linear-gradient(135deg, #e6bf43, #c5a334);
+}
+
+/* ── Top Bar (Controls & Badges) ───────────────────────────── */
+.vm-topbar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.vm-live-badge {
+  align-items: center;
+  background: rgba(10, 14, 22, 0.65);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  color: #f7f8fc;
+  display: flex;
+  font-size: 9px;
+  font-weight: 700;
+  gap: 6px;
+  letter-spacing: 0.14em;
+  padding: 6px 12px;
+}
+
+.vm-live-dot {
+  animation: vmPulse 1.4s ease-in-out infinite;
+  background: #22c55e;
+  border-radius: 50%;
+  display: block;
+  height: 7px;
+  width: 7px;
+}
+
+@keyframes vmPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.75); }
+}
+
+.vm-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.vm-icon-btn {
+  align-items: center;
+  background: rgba(14, 19, 30, 0.75);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  color: #e2e8f0;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 500;
+  gap: 6px;
+  padding: 6px 12px;
+  transition: all 0.2s;
+}
+
+.vm-icon-btn:hover {
+  background: rgba(26, 34, 52, 0.9);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.vm-icon-btn.is-active {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: rgba(212, 175, 55, 0.5);
+  color: #f6d878;
+}
+
+.vm-icon-btn--danger {
+  color: rgba(248, 113, 113, 0.9);
+}
+
+.vm-icon-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+/* ── Mode Selector (Pill Bar) ──────────────────────────────── */
+.vm-mode-selector {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  background: rgba(10, 14, 24, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 30px;
+  padding: 4px;
+  gap: 4px;
+  z-index: 5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.vm-mode-pill {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 24px;
+  color: rgba(200, 210, 230, 0.8);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  gap: 5px;
+  padding: 6px 12px;
+  transition: all 0.18s ease;
+}
+
+.vm-mode-pill:hover {
+  color: #fff;
+}
+
+.vm-mode-pill.is-active {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.1));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #f6d878;
+  font-weight: 600;
+}
+
+/* ── Processing Badge ──────────────────────────────────────── */
+.vm-processing-badge {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(14, 19, 32, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 24px;
+  color: #f6d878;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 7px 16px;
+  z-index: 6;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.2s ease;
+}
+
+.vm-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(212, 175, 55, 0.2);
+  border-top-color: #d4af37;
+  border-radius: 50%;
+  animation: mirrorSpin 0.7s linear infinite;
+}
+
+.vm-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(212, 175, 55, 0.2);
+  border-top-color: #d4af37;
+  border-radius: 50%;
+  animation: mirrorSpin 0.75s linear infinite;
+}
+
+.is-spinning {
+  animation: mirrorSpin 0.8s linear infinite;
+}
+
+@keyframes mirrorSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ── Floating Error Toast ──────────────────────────────────── */
+.vm-error-toast {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  right: 16px;
+  background: rgba(45, 16, 20, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 12px;
+  color: #fca5a5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  z-index: 7;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.vm-error-toast-icon {
+  flex-shrink: 0;
+  color: #f87171;
+}
+
+.vm-error-toast span {
+  flex: 1;
+}
+
+.vm-error-toast-close {
+  background: transparent;
+  border: none;
+  color: rgba(252, 165, 165, 0.7);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vm-error-toast-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Stats ─────────────────────────────────────────────────── */
+.vm-stats {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  border-radius: 6px;
+  color: rgba(190, 200, 220, 0.65);
+  display: flex;
+  font-size: 8.5px;
+  gap: 4px;
+  padding: 4px 8px;
+  z-index: 5;
+}
+
+/* ── Bottom hint ───────────────────────────────────────────── */
+.vm-bottom-hint {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(190, 200, 225, 0.65);
+  padding: 4px;
+}

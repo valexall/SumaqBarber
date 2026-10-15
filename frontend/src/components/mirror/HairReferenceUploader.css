@@ -1,0 +1,284 @@
+/* ============================================================
+   HAIR REFERENCE UPLOADER
+   ============================================================ */
+
+.hair-uploader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* ── Drop zone ─────────────────────────────────────────────── */
+.hair-uploader__dropzone {
+  align-items: center;
+  border: 1.5px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 110px;
+  justify-content: center;
+  padding: 22px 16px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.hair-uploader__dropzone:hover,
+.hair-uploader__dropzone:focus-visible {
+  background: rgba(91, 135, 255, 0.06);
+  border-color: rgba(91, 135, 255, 0.55);
+  outline: none;
+}
+
+.hair-uploader__dropzone.is-dragging {
+  background: rgba(91, 135, 255, 0.12);
+  border-color: #5b87ff;
+}
+
+.hair-uploader__dropzone.is-loading {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.hair-uploader__file-input {
+  display: none;
+}
+
+.hair-uploader__icon-wrap {
+  align-items: center;
+  background: rgba(91, 135, 255, 0.14);
+  border-radius: 10px;
+  color: #7da3ff;
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.hair-uploader__label {
+  color: #c8cede;
+  font-size: 11.5px;
+  margin: 0;
+  text-align: center;
+}
+
+.hair-uploader__label span {
+  color: #7da3ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hair-uploader__hint {
+  color: rgba(180, 185, 201, 0.65);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  margin: 0;
+  text-align: center;
+}
+
+/* Spinner */
+.hair-uploader__spinner {
+  animation: mirrorSpin 0.75s linear infinite;
+  border: 2.5px solid rgba(91, 135, 255, 0.25);
+  border-top-color: #5b87ff;
+  border-radius: 50%;
+  height: 28px;
+  width: 28px;
+}
+
+@keyframes mirrorSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Guide tip */
+.hair-uploader__guide-tip {
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 9px;
+  color: rgba(230, 235, 245, 0.85);
+  font-size: 10.5px;
+  line-height: 1.45;
+  padding: 8px 12px;
+}
+
+.hair-uploader__guide-tip span {
+  color: #f6d878;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* ── URL form ──────────────────────────────────────────────── */
+.hair-uploader__url-form {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  display: flex;
+  gap: 8px;
+  padding: 7px 10px;
+}
+
+.hair-uploader__url-icon {
+  color: rgba(180, 185, 201, 0.6);
+  flex-shrink: 0;
+}
+
+.hair-uploader__url-input {
+  background: transparent;
+  border: none;
+  color: #e8eaf4;
+  flex: 1;
+  font-family: inherit;
+  font-size: 11px;
+  outline: none;
+  width: 100%;
+}
+
+.hair-uploader__url-input::placeholder {
+  color: rgba(180, 185, 201, 0.45);
+}
+
+.hair-uploader__url-btn {
+  background: #5b87ff;
+  border: none;
+  border-radius: 7px;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 5px 12px;
+  transition: opacity 0.15s;
+}
+
+.hair-uploader__url-btn:hover { opacity: 0.85; }
+.hair-uploader__url-btn:disabled { opacity: 0.4; cursor: wait; }
+
+/* ── Error ─────────────────────────────────────────────────── */
+.hair-uploader__error {
+  align-items: center;
+  color: #ff7b7b;
+  display: flex;
+  font-size: 10.5px;
+  gap: 6px;
+  margin: 0;
+}
+
+/* ── Presets ───────────────────────────────────────────────── */
+.hair-uploader__presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.hair-uploader__presets-label {
+  align-items: center;
+  color: rgba(180, 185, 201, 0.65);
+  display: flex;
+  font-size: 9.5px;
+  gap: 5px;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.hair-uploader__preset-grid {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.hair-uploader__preset-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+  padding: 0 0 6px;
+  transition: border-color 0.18s, transform 0.18s;
+}
+
+.hair-uploader__preset-item:hover {
+  border-color: rgba(91, 135, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.hair-uploader__preset-item:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.hair-uploader__preset-item img {
+  aspect-ratio: 1;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.hair-uploader__preset-item span {
+  color: #b4b9c9;
+  font-size: 8.5px;
+  letter-spacing: 0.02em;
+  padding: 0 6px;
+  text-align: center;
+}
+
+/* ── Selected state ───────────────────────────────────────── */
+.hair-uploader--selected {
+  align-items: center;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.hair-uploader__preview-wrap {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.hair-uploader__preview {
+  border: 2px solid rgba(91, 135, 255, 0.5);
+  border-radius: 10px;
+  display: block;
+  height: 64px;
+  object-fit: cover;
+  width: 64px;
+}
+
+.hair-uploader__reset-btn {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.65);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  height: 20px;
+  justify-content: center;
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 20px;
+}
+
+.hair-uploader__reset-btn:hover {
+  background: #ff4f4f;
+}
+
+.hair-uploader__selected-info {
+  align-items: center;
+  color: #c8cede;
+  display: flex;
+  font-size: 11px;
+  gap: 7px;
+}
+
+.hair-uploader__check {
+  color: #4ade80;
+  flex-shrink: 0;
+}

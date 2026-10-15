@@ -1,0 +1,56 @@
+.scroll-experience { height: 500vh; position: relative; }
+.scroll-experience__stage { background: #292f43; height: 100svh; overflow: hidden; position: sticky; top: 0; }
+.scroll-experience__poster { display: block; height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; z-index: 1; pointer-events: none; }
+.scroll-experience__canvas { display: block; height: 100%; inset: 0; position: absolute; width: 100%; z-index: 2; opacity: 0; transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1); transform: translateZ(0); backface-visibility: hidden; }
+.scroll-experience__canvas.is-ready { opacity: 1; }
+.scroll-experience__veil { background: linear-gradient(90deg, rgba(31, 37, 55, .62), rgba(39, 46, 68, .1) 60%, rgba(33, 37, 59, .3)); inset: 0; pointer-events: none; position: absolute; z-index: 3; }
+.scroll-scene__panel { color: #f7f8fc; left: clamp(24px, 6.5vw, 100px); max-width: 450px; opacity: 0; position: absolute; top: 25%; visibility: hidden; z-index: 4; }
+.scroll-scene__panel--hero { left: auto; right: clamp(24px, 6.5vw, 100px); }
+.scroll-scene__panel--services { left: clamp(24px, 6.5vw, 100px); right: auto; }
+.scroll-scene__panel--final { left: clamp(24px, 6.5vw, 100px); right: auto; }
+.scroll-scene__panel--simulation { left: auto; right: clamp(24px, 6.5vw, 100px); }
+.scroll-scene__panel--final, .scroll-scene__panel--closing { max-width: 560px; }
+.scroll-scene__panel--closing { left: auto; right: clamp(24px, 7vw, 110px); }
+.scene-eyebrow { color: #d7dbe6; font-size: 9px; letter-spacing: .3em; margin: 0 0 20px; text-transform: uppercase; }
+.scene-eyebrow::before { background: #91a7ff; content: ''; display: inline-block; height: 4px; margin: 0 8px 1px 0; width: 4px; }
+.scroll-scene__panel h1, .scroll-scene__panel h2 { font-weight: 300; letter-spacing: -.06em; margin: 0 0 20px; }
+.scroll-scene__panel h1 { font-size: clamp(54px, 7vw, 100px); line-height: .96; }
+.scroll-scene__panel h2 { font-size: clamp(42px, 5vw, 70px); line-height: 1; }
+.scroll-scene__panel em { color: #a9b9ff; font-style: normal; }
+.scroll-scene__panel > p:not(.scene-eyebrow) { color: #c6cbd7; font-size: 13px; line-height: 1.65; max-width: 340px; }
+.scene-actions { display: flex; gap: 12px; margin-top: 25px; }
+.scene-button { align-items: center; background: #5985ff; border-radius: 25px; box-shadow: 0 8px 24px rgba(67, 116, 255, .35); color: white; display: inline-flex; font-size: 10px; gap: 8px; padding: 13px 19px; }
+.scene-button--ghost { background: rgba(39, 46, 68, .25); border: 1px solid rgba(255, 255, 255, .3); box-shadow: none; }
+.scene-service-grid { display: grid; gap: 10px; grid-template-columns: repeat(4, 1fr); margin: 25px 0 13px; }
+.scene-service-grid span { background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .13); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 82px; padding: 12px 9px; }
+.scene-service-grid svg { color: #e0e5f1; height: 19px; width: 19px; }
+.scene-service-grid b { font-size: 9px; font-weight: 500; }
+.scene-service-grid small, .scene-booking small { color: #b7bdcb; font-size: 8px; }
+.scene-booking { align-items: center; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .13); border-radius: 8px; display: flex; gap: 10px; padding: 12px 14px; }
+.scene-booking b { font-size: 10px; font-weight: 500; }
+.scene-booking small { flex: 1; }
+.scene-booking > svg:last-child { background: #5985ff; border-radius: 50%; padding: 7px; }
+.method-list { display: grid; gap: 11px; margin: 26px 0; }
+.method-list span { align-items: baseline; border-bottom: 1px solid rgba(255, 255, 255, .14); display: grid; gap: 12px; grid-template-columns: 24px 105px 1fr; padding-bottom: 10px; }
+.method-list b { color: #9eafff; font-size: 9px; font-weight: 500; }
+.method-list strong, .method-list small { font-size: 10px; }
+.method-list small { color: #b7bdcb; }
+.social-proof { border-left: 1px solid #91a7ff; margin: 25px 0; max-width: 340px; padding-left: 15px; }
+.social-proof svg { color: #a9b9ff; }
+.social-proof p { color: #e1e4eb; font-size: 14px; line-height: 1.5; margin: 7px 0; }
+.social-proof span { color: #aeb5c7; font-size: 9px; }
+.visit-details { display: grid; gap: 10px; margin: 24px 0; }
+.visit-details span { align-items: center; color: #c9ceda; display: flex; gap: 10px; font-size: 10px; }
+.visit-details svg { color: #a9b9ff; }
+.scroll-experience__progress, .scroll-experience__hint { bottom: 24px; color: #e4e7ef; font-size: 8px; letter-spacing: .2em; position: absolute; text-transform: uppercase; z-index: 3; }
+.scroll-experience__progress { left: 28px; }
+.scroll-experience__progress i { background: #a5b4ff; display: inline-block; height: 1px; margin: 0 8px 3px; width: 25px; }
+.scroll-experience__hint { align-items: center; animation: scrollHint 1.8s ease-in-out infinite; display: flex; flex-direction: column; gap: 7px; left: 50%; transform: translateX(-50%); }
+@keyframes scrollHint { 0%, 100% { opacity: .5; transform: translateX(-50%) translateY(0); } 50% { opacity: 1; transform: translateX(-50%) translateY(5px); } }
+@media (max-width: 800px) { .scroll-experience__stage { min-height: 100svh; } .scroll-scene__panel, .scroll-scene__panel--hero, .scroll-scene__panel--services, .scroll-scene__panel--final, .scroll-scene__panel--closing { left: 24px; max-width: calc(100% - 48px); right: auto; top: 18%; } .scroll-scene__panel h1 { font-size: clamp(50px, 15vw, 72px); } .scroll-scene__panel h2 { font-size: 44px; } .scene-actions { align-items: flex-start; flex-direction: column; } .scene-service-grid { grid-template-columns: repeat(2, 1fr); } .scroll-experience__hint { display: none; } }
+@media (prefers-reduced-motion: reduce) { .scroll-experience { height: 100svh; } .scroll-scene__panel { opacity: 1 !important; visibility: visible !important; } .scroll-scene__panel:not(.scroll-scene__panel--hero) { display: none; } .scroll-experience__hint { animation: none; } }
+@media (max-width: 1100px) { .scroll-scene__panel { max-width: min(390px, 42vw); } .scroll-scene__panel--final, .scroll-scene__panel--closing { max-width: min(440px, 44vw); } .scroll-scene__panel h1 { font-size: clamp(48px, 6vw, 76px); } .scroll-scene__panel h2 { font-size: clamp(38px, 4.5vw, 58px); } .scene-service-grid { grid-template-columns: repeat(2, 1fr); } .method-list span { grid-template-columns: 22px 90px 1fr; } }
+@media (max-width: 800px) { .scroll-experience__stage { height: 100svh; } .scroll-experience__canvas { height: 100%; width: 100%; } .scroll-scene__panel, .scroll-scene__panel--hero, .scroll-scene__panel--services, .scroll-scene__panel--simulation, .scroll-scene__panel--final, .scroll-scene__panel--closing { left: 24px; max-width: calc(100% - 48px); right: auto; top: 15%; } .scroll-scene__panel--final { top: 13%; } .scroll-scene__panel--closing { top: 55%; } .scroll-scene__panel h1 { font-size: clamp(46px, 13vw, 72px); } .scroll-scene__panel h2 { font-size: clamp(38px, 10vw, 56px); } .scroll-scene__panel > p:not(.scene-eyebrow) { font-size: 12px; max-width: 320px; } .scene-actions { align-items: flex-start; flex-direction: column; } .scene-service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .method-list span { grid-template-columns: 24px 90px 1fr; } .scene-booking { max-width: 100%; } .scroll-experience__progress { bottom: 10px; left: 18px; } }
+@media (max-width: 560px) { .scroll-scene__panel, .scroll-scene__panel--hero, .scroll-scene__panel--services, .scroll-scene__panel--simulation { left: 18px; max-width: calc(100% - 36px); top: 13%; } .scroll-scene__panel--final { left: 18px; max-width: calc(100% - 36px); top: 11%; } .scroll-scene__panel--closing { left: 18px; max-width: calc(100% - 36px); top: 54%; } .scroll-scene__panel h1 { font-size: clamp(42px, 14vw, 62px); } .scroll-scene__panel h2 { font-size: clamp(34px, 10vw, 48px); } .scene-service-grid { gap: 7px; } .scene-service-grid span { min-height: 72px; padding: 10px 8px; } .scene-service-grid b { font-size: 8px; } .scene-service-grid small { font-size: 7px; } .method-list span { gap: 8px; grid-template-columns: 20px 75px 1fr; } .method-list strong, .method-list small { font-size: 9px; } .social-proof p { font-size: 12px; } .visit-details { margin: 18px 0; } }
+@media (max-width: 380px) { .scroll-scene__panel, .scroll-scene__panel--hero, .scroll-scene__panel--services, .scroll-scene__panel--simulation, .scroll-scene__panel--final, .scroll-scene__panel--closing { left: 14px; max-width: calc(100% - 28px); } .scroll-scene__panel h1 { font-size: 40px; } .scroll-scene__panel h2 { font-size: 32px; } .scene-service-grid { grid-template-columns: 1fr 1fr; } .scene-button { font-size: 9px; padding: 11px 15px; } }
+@media (max-width: 800px) { .scroll-scene__panel, .scroll-scene__panel--hero, .scroll-scene__panel--services, .scroll-scene__panel--simulation, .scroll-scene__panel--final, .scroll-scene__panel--closing { left: 24px; right: 24px; width: auto; max-width: none; text-align: center; } .scroll-scene__panel:not(.scroll-scene__panel--final):not(.scroll-scene__panel--closing) { top: 50%; translate: 0 -50%; } .scroll-scene__panel--final, .scroll-scene__panel--closing { left: 24px; right: 24px; } .scroll-scene__panel > p:not(.scene-eyebrow) { margin-left: auto; margin-right: auto; } .scene-eyebrow { text-align: center; } .scene-actions { align-items: flex-end; justify-content: flex-end; width: 100%; } .scene-button { margin-left: auto; } .scene-booking { margin-left: auto; text-align: left; width: min(100%, 360px); } .social-proof { margin-left: auto; margin-right: auto; text-align: center; } .visit-details { text-align: left; width: fit-content; margin-left: auto; margin-right: auto; } }
