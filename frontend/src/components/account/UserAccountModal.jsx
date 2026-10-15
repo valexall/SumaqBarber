@@ -37,7 +37,8 @@ export function UserAccountModal({
   onLogin,
   onLogout,
   onUpdateUser,
-  onOpenBooking
+  onOpenBooking,
+  onOpenBarber
 }) {
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const [activeTab, setActiveTab] = useState('appointments') // 'appointments' | 'profile'
@@ -203,6 +204,10 @@ export function UserAccountModal({
       setLoginCredential('')
       setLoginPassword('')
       onLogin?.(res.user, res.token)
+      if (res.user?.role === 'BARBER' || res.user?.role === 'OWNER' || res.user?.role === 'ADMIN') {
+        handleRequestClose()
+        onOpenBarber?.()
+      }
     } catch (err) {
       setErrorMsg(err.message || 'Error al iniciar sesión.')
     } finally {
@@ -233,6 +238,14 @@ export function UserAccountModal({
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
   }
 
+  const roleBadgeLabel = currentUser
+    ? currentUser.role === 'BARBER'
+      ? 'MASTER BARBER / SUMAQ STAFF'
+      : currentUser.role === 'OWNER' || currentUser.role === 'ADMIN'
+      ? 'ADMINISTRADOR / OWNER'
+      : 'CLIENTE NOVA / SUMAQ'
+    : 'PORTAL CLIENTES SUMAQ'
+
   return (
     <div
       className={`account-overlay ${isAnimatingOut ? 'is-closing' : 'is-open'}`}
@@ -262,7 +275,7 @@ export function UserAccountModal({
             <div className="account-info">
               <div className="account-badge-row">
                 <span className="account-badge">
-                  <Sparkles size={11} /> {currentUser ? 'CLIENTE NOVA / SUMAQ' : 'PORTAL CLIENTES SUMAQ'}
+                  <Sparkles size={11} /> {roleBadgeLabel}
                 </span>
               </div>
               <h2 id="account-modal-title">
@@ -289,6 +302,30 @@ export function UserAccountModal({
             <X size={18} />
           </button>
         </div>
+
+        {/* Staff Quick Action Banner */}
+        {currentUser && (currentUser.role === 'BARBER' || currentUser.role === 'OWNER' || currentUser.role === 'ADMIN') && (
+          <div className="account-staff-banner">
+            <div className="account-staff-info">
+              <Scissors size={18} />
+              <div>
+                <strong>Acceso Staff / Barbero</strong>
+                <p>Gestiona tu agenda de citas, atenciones e ingresos en vivo.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="account-staff-cta"
+              onClick={() => {
+                handleRequestClose()
+                onOpenBarber?.()
+              }}
+            >
+              <span>Abrir Panel Barbero</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        )}
 
         {!currentUser ? (
           <form className="account-body account-login-form" onSubmit={handleLoginSubmit}>

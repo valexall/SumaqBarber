@@ -188,3 +188,78 @@ export async function updateMyProfile(data, token) {
   }
   return json.data;
 }
+
+/**
+ * Fetch appointments for the barber panel
+ */
+export async function fetchBarberAppointments(token, filters = {}) {
+  const queryParams = new URLSearchParams();
+  if (filters.date) queryParams.set('date', filters.date);
+  if (filters.status && filters.status !== 'ALL') queryParams.set('status', filters.status);
+  if (filters.barberId) queryParams.set('barberId', filters.barberId);
+  if (filters.startDate) queryParams.set('startDate', filters.startDate);
+  if (filters.endDate) queryParams.set('endDate', filters.endDate);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  const res = await apiRequest(`/appointments/barber${queryStr}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Error al obtener la agenda del barbero');
+  }
+  return json.data || [];
+}
+
+/**
+ * Fetch stats for the barber panel
+ */
+export async function fetchBarberStats(token, date) {
+  const queryParams = new URLSearchParams();
+  if (date) queryParams.set('date', date);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  const res = await apiRequest(`/appointments/barber/stats${queryStr}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Error al obtener las estadísticas del barbero');
+  }
+  return json.data || {
+    todayTotal: 0,
+    pendingCount: 0,
+    confirmedCount: 0,
+    completedCount: 0,
+    canceledCount: 0,
+    todayRevenue: 0,
+    projectedRevenue: 0,
+    weekCompletedCount: 0,
+    weekRevenue: 0,
+  };
+}
+
+/**
+ * Update an appointment's status (CONFIRMED, COMPLETED, CANCELED)
+ */
+export async function updateAppointmentStatus(appointmentId, status, token, notes) {
+  const res = await apiRequest(`/appointments/${appointmentId}/status`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status, notes }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Error al actualizar el estado de la cita a ${status}`);
+  }
+  return json.data;
+}

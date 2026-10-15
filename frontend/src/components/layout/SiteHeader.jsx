@@ -1,9 +1,11 @@
 import { ArrowUpRight, Menu, Scissors, Sparkles, User } from 'lucide-react'
 
-export function SiteHeader({ onOpenBooking, onOpenAccount, onOpenMirror, currentUser }) {
+export function SiteHeader({ onOpenBooking, onOpenAccount, onOpenMirror, onOpenBarber, currentUser }) {
   const initials = currentUser
     ? `${currentUser.firstName?.[0] || 'U'}${currentUser.lastName?.[0] || ''}`.toUpperCase()
     : null
+
+  const isStaff = currentUser?.role === 'BARBER' || currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN'
 
   return (
     <header className="site-header">
@@ -17,38 +19,67 @@ export function SiteHeader({ onOpenBooking, onOpenAccount, onOpenMirror, current
         <a href="#simulacion">Nosotros</a>
       </nav>
       <div className="header-actions">
-        <button
-          type="button"
-          className="header-account-btn"
-          onClick={onOpenAccount}
-          aria-label={currentUser ? `Cuenta de ${currentUser.firstName}` : 'Mi Cuenta'}
-        >
-          {initials ? (
-            <span className="header-user-avatar">{initials}</span>
-          ) : (
-            <User size={14} />
-          )}
-          <span>{currentUser ? currentUser.firstName : 'Mi Cuenta'}</span>
-        </button>
-        <button
-          type="button"
-          className="header-mirror-btn"
-          onClick={onOpenMirror}
-          aria-label="Probar peinado con espejo virtual"
-        >
-          <Sparkles size={13} aria-hidden="true" />
-          <span>Probar look</span>
-        </button>
-        <a
-          className="header-cta"
-          href="#reserva"
-          onClick={(e) => {
-            e.preventDefault();
-            onOpenBooking?.();
-          }}
-        >
-          Reservar ahora <ArrowUpRight size={16} aria-hidden="true" />
-        </a>
+        {isStaff ? (
+          <>
+            <button
+              type="button"
+              className="header-account-btn"
+              onClick={onOpenAccount}
+              aria-label={`Cuenta de ${currentUser.firstName}`}
+            >
+              {initials ? (
+                <span className="header-user-avatar">{initials}</span>
+              ) : (
+                <User size={14} />
+              )}
+              <span>{currentUser.firstName}</span>
+            </button>
+            <button
+              type="button"
+              className="header-cta header-cta--barber"
+              onClick={onOpenBarber}
+              aria-label="Abrir mi panel de barbero"
+            >
+              <Scissors size={15} aria-hidden="true" />
+              <span>Mi Panel Barbero</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="header-account-btn"
+              onClick={onOpenAccount}
+              aria-label={currentUser ? `Cuenta de ${currentUser.firstName}` : 'Mi Cuenta'}
+            >
+              {initials ? (
+                <span className="header-user-avatar">{initials}</span>
+              ) : (
+                <User size={14} />
+              )}
+              <span>{currentUser ? currentUser.firstName : 'Mi Cuenta'}</span>
+            </button>
+            <button
+              type="button"
+              className="header-mirror-btn"
+              onClick={onOpenMirror}
+              aria-label="Probar peinado con espejo virtual"
+            >
+              <Sparkles size={13} aria-hidden="true" />
+              <span>Probar look</span>
+            </button>
+            <a
+              className="header-cta"
+              href="#reserva"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenBooking?.();
+              }}
+            >
+              Reservar ahora <ArrowUpRight size={16} aria-hidden="true" />
+            </a>
+          </>
+        )}
       </div>
       <button
         className="mobile-menu"

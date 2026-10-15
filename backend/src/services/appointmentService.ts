@@ -163,3 +163,65 @@ export const cancelAppointment = async (appointmentId: string, customerId?: stri
   return appointmentRepository.cancelAppointment(appointmentId, customerId);
 };
 
+export const getBarberAppointments = async (
+  userId: string,
+  userRole: string,
+  query: {
+    barberId?: string;
+    date?: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+  }
+) => {
+  // If user is BARBER, enforce barberId to be their own userId
+  const effectiveBarberId =
+    userRole === 'OWNER' || userRole === 'ADMIN'
+      ? query.barberId || userId
+      : userId;
+
+  return appointmentRepository.findBarberAppointments({
+    barberId: effectiveBarberId,
+    date: query.date,
+    startDate: query.startDate,
+    endDate: query.endDate,
+    status: query.status,
+  });
+};
+
+export const getBarberDailyStats = async (
+  userId: string,
+  userRole: string,
+  query: { barberId?: string; date?: string }
+) => {
+  const effectiveBarberId =
+    userRole === 'OWNER' || userRole === 'ADMIN'
+      ? query.barberId || userId
+      : userId;
+
+  return appointmentRepository.getBarberDailyStats(effectiveBarberId, query.date);
+};
+
+export const updateAppointmentStatus = async (
+  appointmentId: string,
+  userId: string,
+  userRole: string,
+  status: string,
+  notes?: string
+) => {
+  const validStatuses: string[] = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELED'];
+  const upperStatus = status?.toUpperCase();
+
+  if (!validStatuses.includes(upperStatus)) {
+    throw new Error('Estado de cita no válido. Debe ser PENDING, CONFIRMED, COMPLETED o CANCELED.');
+  }
+
+  return appointmentRepository.updateAppointmentStatus(
+    appointmentId,
+    userId,
+    upperStatus as any,
+    userRole,
+    notes
+  );
+};
+

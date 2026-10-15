@@ -768,3 +768,72 @@
     padding: 14px 18px;
   }
 }
+
+/* Staff Callout Banner */
+.account-staff-banner {
+  margin: 0 24px 16px;
+  background: linear-gradient(135deg, rgba(91, 135, 255, 0.18), rgba(91, 135, 255, 0.06));
+  border: 1px solid rgba(91, 135, 255, 0.4);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(91, 135, 255, 0.15);
+  position: relative;
+  z-index: 1;
+}
+
+.account-staff-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #93b3ff;
+}
+
+.account-staff-info strong {
+  display: block;
+  font-size: 13px;
+  color: #fff;
+}
+
+.account-staff-info p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.account-staff-cta {
+  background: var(--blue, #5b87ff);
+  border: 0;
+  border-radius: 20px;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(91, 135, 255, 0.35);
+  transition: all 0.2s ease;
+}
+
+.account-staff-cta:hover {
+  background: #6f96ff;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 540px) {
+  .account-staff-banner {
+    margin: 0 16px 14px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .account-staff-cta {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -12,6 +12,9 @@ const UserAccountModal = lazy(() =>
 const VirtualMirrorModal = lazy(() =>
   import('./components/mirror/VirtualMirrorModal').then((m) => ({ default: m.VirtualMirrorModal }))
 )
+const BarberDashboard = lazy(() =>
+  import('./components/barber/BarberDashboard').then((m) => ({ default: m.BarberDashboard }))
+)
 
 function App() {
   const [isBookingOpen, setIsBookingOpen] = useState(() => 
@@ -20,6 +23,9 @@ function App() {
   const [isAccountOpen, setIsAccountOpen] = useState(false)
   const [isMirrorOpen, setIsMirrorOpen] = useState(() =>
     typeof window !== 'undefined' && window.location.hash === '#espejo'
+  )
+  const [isBarberOpen, setIsBarberOpen] = useState(() =>
+    typeof window !== 'undefined' && (window.location.hash === '#barbero' || window.location.hash === '#panel-barbero')
   )
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -36,6 +42,7 @@ function App() {
       import('./components/booking/BookingModal')
       import('./components/account/UserAccountModal')
       import('./components/mirror/VirtualMirrorModal')
+      import('./components/barber/BarberDashboard')
     }
     if (typeof window.requestIdleCallback === 'function') {
       const id = window.requestIdleCallback(prefetch, { timeout: 2500 })
@@ -77,9 +84,30 @@ function App() {
     }
   }, [])
 
-  const handleOpenBooking = useCallback(() => {
-    setIsBookingOpen(true)
+  const handleOpenBarber = useCallback(() => {
+    setIsAccountOpen(false)
+    setIsBookingOpen(false)
+    setIsMirrorOpen(false)
+    setIsBarberOpen(true)
+    if (window.location.hash !== '#barbero') {
+      window.location.hash = '#barbero'
+    }
   }, [])
+
+  const handleCloseBarber = useCallback(() => {
+    setIsBarberOpen(false)
+    if (window.location.hash === '#barbero' || window.location.hash === '#panel-barbero') {
+      history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
+
+  const handleOpenBooking = useCallback(() => {
+    if (currentUser?.role === 'BARBER') {
+      handleOpenBarber()
+      return
+    }
+    setIsBookingOpen(true)
+  }, [currentUser, handleOpenBarber])
 
   const handleCloseBooking = useCallback(() => {
     setIsBookingOpen(false)
@@ -104,8 +132,12 @@ function App() {
 
   const handleSwitchToBooking = useCallback(() => {
     setIsAccountOpen(false)
+    if (currentUser?.role === 'BARBER') {
+      handleOpenBarber()
+      return
+    }
     setIsBookingOpen(true)
-  }, [])
+  }, [currentUser, handleOpenBarber])
 
   const handleOpenMirror = useCallback(() => {
     setIsMirrorOpen(true)
@@ -118,7 +150,7 @@ function App() {
     }
   }, [])
 
-  // Intercept any click to #reserva across the entire application
+  // Intercept any click to #reserva, #cuenta, #espejo, or #barbero across the entire application
   useEffect(() => {
     const handleAnchorClick = (e) => {
       const anchor = e.target.closest('a[href="#reserva"], a[href="#reservar"]')
@@ -136,6 +168,11 @@ function App() {
         e.preventDefault()
         handleOpenMirror()
       }
+      const barberAnchor = e.target.closest('a[href="#barbero"], a[href="#panel-barbero"]')
+      if (barberAnchor) {
+        e.preventDefault()
+        handleOpenBarber()
+      }
     }
 
     const handleHashChange = () => {
@@ -145,6 +182,8 @@ function App() {
         setIsAccountOpen(true)
       } else if (window.location.hash === '#espejo') {
         setIsMirrorOpen(true)
+      } else if (window.location.hash === '#barbero' || window.location.hash === '#panel-barbero') {
+        setIsBarberOpen(true)
       }
     }
 
@@ -157,7 +196,23 @@ function App() {
       document.removeEventListener('click', handleAnchorClick)
       window.removeEventListener('hashchange', handleHashChange)
     }
-  }, [handleOpenBooking, handleOpenAccount, handleOpenMirror, refreshUser])
+  }, [handleOpenBooking, handleOpenAccount, handleOpenMirror, handleOpenBarber, refreshUser])
+
+  // Full-screen Barber Dashboard Workspace
+  if (isBarberOpen) {
+    return (
+      <Suspense fallback={<div className="barber-os-root" />}>
+        <BarberDashboard
+          currentUser={currentUser}
+          onLogout={() => {
+            handleLogout()
+            handleCloseBarber()
+          }}
+          onBackToSite={handleCloseBarber}
+        />
+      </Suspense>
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -165,6 +220,7 @@ function App() {
         onOpenBooking={handleOpenBooking}
         onOpenAccount={handleOpenAccount}
         onOpenMirror={handleOpenMirror}
+        onOpenBarber={handleOpenBarber}
         currentUser={currentUser}
       />
       <main>
@@ -193,6 +249,7 @@ function App() {
             onLogout={handleLogout}
             onUpdateUser={handleUpdateUser}
             onOpenBooking={handleSwitchToBooking}
+            onOpenBarber={handleOpenBarber}
           />
         )}
 
