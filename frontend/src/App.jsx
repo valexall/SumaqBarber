@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import { SiteHeader } from './components/layout/SiteHeader'
 import { ScrollExperience } from './components/landing/ScrollExperience'
 import './App.css'
@@ -198,23 +199,20 @@ function App() {
     }
   }, [handleOpenBooking, handleOpenAccount, handleOpenMirror, handleOpenBarber, refreshUser])
 
-  // Full-screen Barber Dashboard Workspace
-  if (isBarberOpen) {
-    return (
-      <Suspense fallback={<div className="barber-os-root" />}>
-        <BarberDashboard
-          currentUser={currentUser}
-          onLogout={() => {
-            handleLogout()
-            handleCloseBarber()
-          }}
-          onBackToSite={handleCloseBarber}
-        />
-      </Suspense>
-    )
-  }
+  const barberView = (
+    <Suspense fallback={<div className="barber-os-root" />}>
+      <BarberDashboard
+        currentUser={currentUser}
+        onLogout={() => {
+          handleLogout()
+          handleCloseBarber()
+        }}
+        onBackToSite={handleCloseBarber}
+      />
+    </Suspense>
+  )
 
-  return (
+  const mainView = (
     <div className="app-shell">
       <SiteHeader
         onOpenBooking={handleOpenBooking}
@@ -262,6 +260,14 @@ function App() {
         )}
       </Suspense>
     </div>
+  )
+
+  return (
+    <Routes>
+      <Route path="/barbero" element={barberView} />
+      <Route path="/" element={isBarberOpen ? barberView : mainView} />
+      <Route path="*" element={isBarberOpen ? barberView : mainView} />
+    </Routes>
   )
 }
 

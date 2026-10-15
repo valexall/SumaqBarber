@@ -4,7 +4,8 @@
  */
 
 const AI_BASE_URL =
-  import.meta.env.VITE_AI_URL || 'http://localhost:8000'
+  import.meta.env.VITE_AI_URL ||
+  (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : '')
 
 /**
  * Check if the AI microservice is available and the model is loaded.

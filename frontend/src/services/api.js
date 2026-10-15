@@ -1,9 +1,13 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api/v1' : 'http://localhost:4000/api/v1');
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? '/api/v1'
+    : (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4000/api/v1` : '/api/v1'));
 const DEFAULT_TIMEOUT_MS = 8000;
 
 /**
  * Robust fetch wrapper with timeout and single base URL.
- * Never attempts retries against localhost in production.
+ * Never attempts retries against dev servers in production.
  */
 async function apiRequest(endpoint, options = {}) {
   const { timeout = DEFAULT_TIMEOUT_MS, headers = {}, ...fetchOptions } = options;
