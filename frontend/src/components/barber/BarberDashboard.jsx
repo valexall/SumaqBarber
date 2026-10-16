@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { CheckCircle2, RotateCw, Coffee } from 'lucide-react'
 import {
   fetchBarberAppointments,
   fetchBarberStats,
@@ -8,8 +7,10 @@ import {
 import { BarberHeader } from './BarberHeader'
 import { BarberToolbar } from './BarberToolbar'
 import { BarberKpiGrid } from './BarberKpiGrid'
-import { BarberAppointmentCard } from './BarberAppointmentCard'
+import { BarberAppointmentsFeed } from './BarberAppointmentsFeed'
 import { BarberCancelModal } from './BarberCancelModal'
+import { BarbersManagementTab } from '../admin/BarbersManagementTab'
+import { CustomersManagementTab } from '../admin/CustomersManagementTab'
 import './BarberDashboard.css'
 
 const getTodayStr = () => new Date().toLocaleDateString('en-CA')
@@ -20,6 +21,7 @@ const getTomorrowStr = () => {
 }
 
 export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
+  const [activeSection, setActiveSection] = useState('AGENDA')
   const [todayStr] = useState(getTodayStr)
   const [tomorrowStr] = useState(getTomorrowStr)
   const [selectedDate, setSelectedDate] = useState(getTodayStr)
@@ -211,74 +213,50 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
         onRefresh={handleRefresh}
         onLogout={onLogout}
         onBackToSite={onBackToSite}
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
       />
 
       <main className="barber-os-content">
-        <BarberToolbar
-          selectedDate={selectedDate}
-          todayStr={todayStr}
-          tomorrowStr={tomorrowStr}
-          onSelectDate={handleSelectDate}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          countsByStatus={countsByStatus}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
+        {activeSection === 'BARBERS' && (
+          <BarbersManagementTab showToast={showToast} />
+        )}
 
-        <BarberKpiGrid stats={stats} countsByStatus={countsByStatus} />
+        {activeSection === 'CUSTOMERS' && (
+          <CustomersManagementTab showToast={showToast} />
+        )}
 
-        <div className="barber-feed-container">
-          {isLoading ? (
-            <div className="barber-loading-state">
-              <RotateCw size={32} className="is-spinning" />
-              <p>Sincronizando agenda de Sumaq Barber...</p>
-            </div>
-          ) : filteredAppointments.length === 0 ? (
-            <div className="barber-empty-state">
-              <div className="barber-empty-icon">
-                {activeTab === 'PENDING' ? (
-                  <CheckCircle2 size={40} />
-                ) : (
-                  <Coffee size={40} />
-                )}
-              </div>
-              <h3>
-                {activeTab === 'PENDING'
-                  ? '¡Excelente! No hay citas pendientes por confirmar'
-                  : 'No hay citas registradas en esta vista'}
-              </h3>
-              <p>
-                {searchQuery
-                  ? 'No se encontraron resultados para tu búsqueda.'
-                  : `No se encontraron citas con filtro "${activeTab}" para el ${selectedDate}.`}
-              </p>
-              {activeTab !== 'ALL' && (
-                <button
-                  type="button"
-                  className="barber-empty-action-btn"
-                  onClick={() => setActiveTab('ALL')}
-                >
-                  Ver todas las citas del día
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="barber-cards-grid">
-              {filteredAppointments.map((app) => (
-                <BarberAppointmentCard
-                  key={app.id}
-                  app={app}
-                  currentTimeMs={currentTimeMs}
-                  waLink={getWhatsAppLink(app)}
-                  isItemUpdating={updatingId === app.id}
-                  onStatusChange={handleStatusChange}
-                  onOpenCancel={setCancelModalItem}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        {activeSection === 'AGENDA' && (
+          <>
+            <BarberToolbar
+              selectedDate={selectedDate}
+              todayStr={todayStr}
+              tomorrowStr={tomorrowStr}
+              onSelectDate={handleSelectDate}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              countsByStatus={countsByStatus}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+            />
+
+            <BarberKpiGrid stats={stats} countsByStatus={countsByStatus} />
+
+            <BarberAppointmentsFeed
+              isLoading={isLoading}
+              filteredAppointments={filteredAppointments}
+              activeTab={activeTab}
+              searchQuery={searchQuery}
+              selectedDate={selectedDate}
+              setActiveTab={setActiveTab}
+              currentTimeMs={currentTimeMs}
+              getWhatsAppLink={getWhatsAppLink}
+              updatingId={updatingId}
+              onStatusChange={handleStatusChange}
+              onOpenCancel={setCancelModalItem}
+            />
+          </>
+        )}
       </main>
 
       <BarberCancelModal

@@ -1,4 +1,4 @@
-import { Scissors, ArrowLeft, RotateCw, LogOut } from 'lucide-react'
+import { Scissors, ArrowLeft, RotateCw, LogOut, Calendar, Users } from 'lucide-react'
 
 export function BarberHeader({
   barberInitials,
@@ -8,8 +8,15 @@ export function BarberHeader({
   isRefreshing,
   onRefresh,
   onLogout,
-  onBackToSite
+  onBackToSite,
+  activeSection,
+  setActiveSection
 }) {
+  const roleLabel =
+    currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN'
+      ? 'ADMINISTRADOR / OWNER'
+      : 'MASTER BARBER'
+
   return (
     <header className="barber-os-header">
       <div className="barber-os-header-left">
@@ -34,7 +41,7 @@ export function BarberHeader({
                 {currentUser?.firstName || 'Barbero'} {currentUser?.lastName || ''}
               </h2>
               <span className="barber-role-pill">
-                <Scissors size={10} /> MASTER BARBER
+                <Scissors size={10} /> {roleLabel}
               </span>
             </div>
             <p className="barber-subtitle">
@@ -44,8 +51,35 @@ export function BarberHeader({
         </div>
       </div>
 
+      {/* Navigation tabs for management suite */}
+      <div className="barber-os-nav-tabs">
+        <button
+          type="button"
+          className={`barber-nav-tab ${activeSection === 'AGENDA' ? 'is-active' : ''}`}
+          onClick={() => setActiveSection('AGENDA')}
+        >
+          <Calendar size={13} />
+          <span>Agenda</span>
+        </button>
+        <button
+          type="button"
+          className={`barber-nav-tab ${activeSection === 'BARBERS' ? 'is-active' : ''}`}
+          onClick={() => setActiveSection('BARBERS')}
+        >
+          <Scissors size={13} />
+          <span>Equipo / Barberos</span>
+        </button>
+        <button
+          type="button"
+          className={`barber-nav-tab ${activeSection === 'CUSTOMERS' ? 'is-active' : ''}`}
+          onClick={() => setActiveSection('CUSTOMERS')}
+        >
+          <Users size={13} />
+          <span>Clientes</span>
+        </button>
+      </div>
+
       <div className="barber-os-header-right">
-        {/* Shift status switch */}
         <button
           type="button"
           className={`barber-shift-toggle ${isShiftActive ? 'is-active' : 'is-paused'}`}
@@ -56,7 +90,6 @@ export function BarberHeader({
           <span>{isShiftActive ? 'En Turno' : 'En Pausa'}</span>
         </button>
 
-        {/* Refresh button */}
         <button
           type="button"
           className={`barber-action-icon-btn ${isRefreshing ? 'is-spinning' : ''}`}
@@ -67,7 +100,6 @@ export function BarberHeader({
           <RotateCw size={17} />
         </button>
 
-        {/* Logout button */}
         <button
           type="button"
           className="barber-logout-btn"

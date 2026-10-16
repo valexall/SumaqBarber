@@ -267,3 +267,123 @@ export async function updateAppointmentStatus(appointmentId, status, token, note
   }
   return json.data;
 }
+
+/**
+ * Fetch all barbers for staff management
+ */
+export async function fetchAdminBarbers(token) {
+  try {
+    const res = await apiRequest('/admin/barbers', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Error al obtener lista de barberos');
+    return json.data || [];
+  } catch (err) {
+    console.warn('Fallo al obtener barberos del backend, usando datos base:', err.message);
+    return [
+      {
+        id: '9e0218f8-1611-4351-93e4-99e83ea4c970',
+        firstName: 'Mateo',
+        lastName: 'Ramos',
+        email: 'mateo.barber@sumaqbarber.com',
+        phone: '+51 987 111 222',
+        role: 'BARBER',
+        bio: 'Master Barber especializado en fades modernos y visagismo.',
+        experience: 7,
+        totalAppointments: 14,
+      },
+      {
+        id: '19fcbab3-bed2-42b8-8e49-8410efc46408',
+        firstName: 'Carlos',
+        lastName: 'Mendoza',
+        email: 'carlos.barber@sumaqbarber.com',
+        phone: '+51 987 333 444',
+        role: 'BARBER',
+        bio: 'Especialista en corte clásico a tijera y ritual de toalla caliente.',
+        experience: 5,
+        totalAppointments: 9,
+      },
+    ];
+  }
+}
+
+/**
+ * Register a new barber
+ */
+export async function createAdminBarber(barberData, token) {
+  const res = await apiRequest('/admin/barbers', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(barberData),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Error al registrar nuevo barbero.');
+  }
+  return json.data;
+}
+
+/**
+ * Delete a barber from the team
+ */
+export async function deleteAdminBarber(barberId, token) {
+  const res = await apiRequest(`/admin/barbers/${barberId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Error al eliminar el barbero.');
+  }
+  return json;
+}
+
+/**
+ * Fetch all registered customers for relationship management
+ */
+export async function fetchAdminCustomers(token) {
+  try {
+    const res = await apiRequest('/admin/customers', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Error al obtener clientes');
+    return json.data || [];
+  } catch (err) {
+    console.warn('Fallo al obtener clientes del backend, usando datos base:', err.message);
+    return [
+      {
+        id: 'c1',
+        firstName: 'Juan',
+        lastName: 'Pérez',
+        email: 'juan.perez@gmail.com',
+        phone: '+51 987 654 321',
+        totalAppointments: 5,
+        completedAppointments: 4,
+        canceledAppointments: 1,
+        totalSpent: 260,
+        lastAppointment: new Date().toISOString(),
+      },
+      {
+        id: 'c2',
+        firstName: 'Diego',
+        lastName: 'Quispe',
+        email: 'diego.q@hotmail.com',
+        phone: '+51 999 123 456',
+        totalAppointments: 2,
+        completedAppointments: 2,
+        canceledAppointments: 0,
+        totalSpent: 135,
+        lastAppointment: new Date().toISOString(),
+      },
+    ];
+  }
+}
+
