@@ -7,12 +7,7 @@ import './VirtualMirror.css'
 
 const SESSION_ID = `sumaq-${Math.random().toString(36).slice(2, 9)}`
 
-/**
- * VirtualMirror
- *
- * Hybrid High-Fidelity HairFastGAN + Real-time 60 FPS MediaPipe Face Tracking.
- * Anchors the photorealistic hairstyle to the user's head as they move, tilt, and turn.
- */
+// VirtualMirror: High-Fidelity HairFastGAN + Real-time 60 FPS MediaPipe Tracking
 export function VirtualMirror({ hairImageB64, isActive, onToggleCamera }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -277,22 +272,11 @@ export function VirtualMirror({ hairImageB64, isActive, onToggleCamera }) {
         />
 
         <VirtualMirrorOverlays
-          camState={camState}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          aiResult={aiResult}
-          showGuide={showGuide}
-          setShowGuide={setShowGuide}
-          hairImageB64={hairImageB64}
-          runHairTransfer={runHairTransfer}
-          isInferring={isInferring}
-          stopCamera={stopCamera}
-          sliderPos={sliderPos}
-          setSliderPos={setSliderPos}
-          lastMs={lastMs}
-          isTrackerReady={isTrackerReady}
-          errorMessage={errorMessage}
-          setErrorMessage={setErrorMessage}
+          {...{
+            camState, viewMode, setViewMode, aiResult, showGuide, setShowGuide,
+            hairImageB64, runHairTransfer, isInferring, stopCamera, sliderPos,
+            setSliderPos, lastMs, isTrackerReady, errorMessage, setErrorMessage
+          }}
         />
       </div>
 

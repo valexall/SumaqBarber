@@ -12,21 +12,11 @@ import { BarberAppointmentCard } from './BarberAppointmentCard'
 import { BarberCancelModal } from './BarberCancelModal'
 import './BarberDashboard.css'
 
-const getTodayStr = () => {
-  const d = new Date()
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
+const getTodayStr = () => new Date().toLocaleDateString('en-CA')
 const getTomorrowStr = () => {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return d.toLocaleDateString('en-CA')
 }
 
 export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
@@ -100,7 +90,10 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
   )
 
   useEffect(() => {
-    loadData(selectedDate)
+    const timer = setTimeout(() => {
+      loadData(selectedDate)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [loadData, selectedDate])
 
   const handleRefresh = () => {
