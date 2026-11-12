@@ -33,6 +33,7 @@ model User {
   lastName  String
   phone     String?  @unique
   role      Role     @default(CUSTOMER)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -41,8 +42,7 @@ model User {
   appointmentsAsCustomer Appointment[] @relation("CustomerAppointments")
   appointmentsAsBarber   Appointment[] @relation("BarberAppointments")
 
-  @@index([role])
-  @@index([phone])
+  @@index([role, isActive])
 }
 
 model BarberProfile {
@@ -59,7 +59,7 @@ model Service {
   id          String   @id @default(uuid())
   name        String
   description String?
-  price       Float
+  price       Decimal  @db.Decimal(10, 2)
   duration    Int      // Duration in minutes
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -80,14 +80,18 @@ model Appointment {
   serviceId   String
   service     Service  @relation(fields: [serviceId], references: [id])
   
-  date        DateTime // Date and time of the appointment
+  date        DateTime @db.Timestamptz(3) // Date and time of the appointment
+  endAt       DateTime @db.Timestamptz(3)
+  durationMinutes Int
+  priceAtBooking Decimal @db.Decimal(10, 2)
   status      AppointmentStatus @default(PENDING)
   notes       String?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([barberId, date])
+  @@index([barberId, date, status])
   @@index([customerId, date])
-  @@index([status])
+  @@index([serviceId])
+  @@index([status, date])
 }

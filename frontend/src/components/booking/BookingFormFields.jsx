@@ -178,7 +178,7 @@ export function BookingFormFields({
                 id="customerPassword"
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mínimo 8 caracteres"
                 value={customerPassword}
                 onChange={(e) => setCustomerPassword(e.target.value)}
                 autoComplete="new-password"

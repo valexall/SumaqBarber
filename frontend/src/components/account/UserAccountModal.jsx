@@ -16,6 +16,7 @@ import { AccountHeader } from './AccountHeader'
 import { AccountGuestLogin } from './AccountGuestLogin'
 import { AccountAppointmentsTab } from './AccountAppointmentsTab'
 import { AccountProfileTab } from './AccountProfileTab'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 import './UserAccountModal.css'
 
 export function UserAccountModal({
@@ -43,6 +44,7 @@ export function UserAccountModal({
   const [cancelingId, setCancelingId] = useState(null)
 
   const modalRef = useRef(null)
+  useDialogFocus(modalRef, isOpen)
 
   const handleRequestClose = useCallback(() => {
     setIsAnimatingOut(true)
@@ -77,10 +79,7 @@ export function UserAccountModal({
   useEffect(() => {
     if (!isOpen || !currentUser) return
     let isMounted = true
-    const token = localStorage.getItem('sumaq_token')
-    if (!token) return
-
-    fetchMyAppointments(token)
+    fetchMyAppointments()
       .then((data) => {
         if (isMounted) setAppointments(data || [])
       })
@@ -98,12 +97,9 @@ export function UserAccountModal({
 
   const handleCancelAppointment = async (appointmentId) => {
     if (!window.confirm('¿Seguro que deseas cancelar esta reserva?')) return
-    const token = localStorage.getItem('sumaq_token')
-    if (!token) return
-
     setCancelingId(appointmentId)
     try {
-      await cancelUserAppointment(appointmentId, token)
+      await cancelUserAppointment(appointmentId)
       setAppointments((prev) =>
         prev.map((app) =>
           app.id === appointmentId ? { ...app, status: 'CANCELED' } : app
@@ -122,9 +118,6 @@ export function UserAccountModal({
     e.preventDefault()
     setErrorMsg('')
     setSuccessMsg('')
-    const token = localStorage.getItem('sumaq_token')
-    if (!token) return
-
     setIsSavingProfile(true)
     try {
       const updated = await updateMyProfile(
@@ -132,8 +125,7 @@ export function UserAccountModal({
           firstName: editFirstName,
           lastName: editLastName,
           phone: editPhone,
-        },
-        token
+        }
       )
       onUpdateUser?.(updated)
       setSuccessMsg('¡Datos actualizados con éxito!')
@@ -166,7 +158,7 @@ export function UserAccountModal({
       ? 'MASTER BARBER / SUMAQ STAFF'
       : currentUser.role === 'OWNER' || currentUser.role === 'ADMIN'
       ? 'ADMINISTRADOR / OWNER'
-      : 'CLIENTE NOVA / SUMAQ'
+      : 'CLIENTE / SUMAQ'
     : 'PORTAL CLIENTES SUMAQ'
 
   return (
@@ -182,6 +174,7 @@ export function UserAccountModal({
       <div
         className={`account-card ${isAnimatingOut ? 'is-closing' : 'is-open'}`}
         ref={modalRef}
+        tabIndex={-1}
       >
         <div className="account-glow account-glow--top" />
         <div className="account-glow account-glow--bottom" />

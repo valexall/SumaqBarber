@@ -1,4 +1,6 @@
 import { AlertCircle, X } from 'lucide-react'
+import { useRef } from 'react'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 
 export function BarberCancelModal({
   cancelModalItem,
@@ -8,6 +10,8 @@ export function BarberCancelModal({
   onClose,
   onConfirm
 }) {
+  const dialogRef = useRef(null)
+  useDialogFocus(dialogRef, Boolean(cancelModalItem))
   if (!cancelModalItem) return null
 
   return (
@@ -17,16 +21,20 @@ export function BarberCancelModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="cancel-appointment-title"
+        ref={dialogRef}
+        tabIndex={-1}
       >
         <div className="barber-modal-header">
           <div className="barber-modal-icon-badge">
             <AlertCircle size={22} />
           </div>
-          <h3>¿Cancelar esta cita?</h3>
+          <h3 id="cancel-appointment-title">¿Cancelar esta cita?</h3>
           <button
             type="button"
             className="barber-modal-close"
             onClick={onClose}
+            aria-label="Cerrar confirmación"
           >
             <X size={18} />
           </button>

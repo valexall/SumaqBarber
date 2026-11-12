@@ -1,12 +1,22 @@
 import prisma from '../config/prisma';
-import { AppointmentStatus } from '@prisma/client';
+import { AppointmentStatus, Prisma } from '@prisma/client';
+
+const limaDayRange = (date: string) => ({
+  start: new Date(`${date}T00:00:00.000-05:00`),
+  end: new Date(`${date}T23:59:59.999-05:00`),
+});
+
+const currentLimaDate = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
 
 export interface CreateAppointmentDTO {
   customerId: string;
   barberId: string;
   serviceId: string;
   date: Date;
-  durationMinutes?: number;
+  durationMinutes: number;
+  priceAtBooking: Prisma.Decimal | number | string;
   notes?: string;
 }
 
@@ -28,60 +38,34 @@ export const findAppointmentsByCustomer = async (customerId: string) => {
 };
 
 export const createAppointmentWithTransaction = async (data: CreateAppointmentDTO) => {
-  try {
-    return await prisma.$transaction(async (tx) => {
+  const slotEnd = new Date(data.date.getTime() + data.durationMinutes * 60 * 1000);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await prisma.$transaction(async (tx) => {
       const slotStart = data.date;
-      const slotEnd = new Date(slotStart.getTime() + (data.durationMinutes || 45) * 60 * 1000);
-      const earliestPossibleOverlap = new Date(slotStart.getTime() - 180 * 60 * 1000);
-
-      // 1. Check for slot collision within the transaction
-      const potentialConflicts = await tx.appointment.findMany({
+      const conflict = await tx.appointment.findFirst({
         where: {
           barberId: data.barberId,
           status: { not: 'CANCELED' },
-          date: {
-            gte: earliestPossibleOverlap,
-            lt: slotEnd,
-          },
+          date: { lt: slotEnd },
+          endAt: { gt: slotStart },
         },
-        include: {
-          service: {
-            select: {
-              duration: true,
-            },
-          },
-        },
+        select: { id: true },
       });
 
-      const hasConflict = potentialConflicts.some((existing) => {
-        const existingDuration = existing.service?.duration || 45;
-        const existingStart = existing.date.getTime();
-        const existingEnd = existingStart + existingDuration * 60 * 1000;
-        const newStart = slotStart.getTime();
-        const newEnd = slotEnd.getTime();
-        return existingStart < newEnd && newStart < existingEnd;
-      });
-
-      if (hasConflict) {
+      if (conflict) {
         throw new Error('El barbero seleccionado ya tiene una cita reservada en ese horario. Por favor elige otro horario.');
       }
 
-      // 2. Clear out any previous CANCELED appointment at this exact slot to allow reuse
-      await tx.appointment.deleteMany({
-        where: {
-          barberId: data.barberId,
-          date: data.date,
-          status: 'CANCELED',
-        },
-      });
-
-      // 3. Atomically insert the new appointment
       return tx.appointment.create({
         data: {
           customerId: data.customerId,
           barberId: data.barberId,
           serviceId: data.serviceId,
           date: data.date,
+          endAt: slotEnd,
+          durationMinutes: data.durationMinutes,
+          priceAtBooking: data.priceAtBooking,
           notes: data.notes,
         },
         include: {
@@ -103,15 +87,17 @@ export const createAppointmentWithTransaction = async (data: CreateAppointmentDT
             },
           },
         },
-      });
-    });
-  } catch (error: any) {
-    // Catch unique constraint collision (P2002) from concurrent requests
-    if (error.code === 'P2002' || error.message?.includes('Unique constraint failed')) {
-      throw new Error('El barbero seleccionado ya tiene una cita reservada en ese horario. Por favor elige otro horario.');
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error: any) {
+      if (error.code === 'P2034' && attempt === 0) continue;
+      if (error.code === 'P2002' || error.code === 'P2004' || error.message?.includes('constraint')) {
+        throw new Error('El barbero seleccionado ya tiene una cita reservada en ese horario. Por favor elige otro horario.');
+      }
+      throw error;
     }
-    throw error;
   }
+  throw new Error('No se pudo completar la reserva. Intenta nuevamente.');
 };
 
 export const cancelAppointment = async (appointmentId: string, customerId?: string) => {
@@ -149,37 +135,19 @@ export const findConflictingAppointment = async (
   durationMinutes: number
 ) => {
   const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
-  const earliestPossibleOverlap = new Date(slotStart.getTime() - 180 * 60 * 1000);
-
-  // Index range scan on (barberId, date)
-  const candidates = await prisma.appointment.findMany({
+  return prisma.appointment.findFirst({
     where: {
       barberId,
       status: { not: 'CANCELED' },
-      date: {
-        gte: earliestPossibleOverlap,
-        lt: slotEnd,
-      },
+      date: { lt: slotEnd },
+      endAt: { gt: slotStart },
     },
-    include: {
-      service: {
-        select: {
-          duration: true,
-        },
-      },
-    },
-  });
-
-  return candidates.find((existing) => {
-    const existingDuration = existing.service?.duration || 45;
-    const existingStart = existing.date.getTime();
-    const existingEnd = existingStart + existingDuration * 60 * 1000;
-    const newStart = slotStart.getTime();
-    const newEnd = slotEnd.getTime();
-
-    return existingStart < newEnd && newStart < existingEnd;
+    select: { id: true },
   });
 };
+
+export const findAppointmentStatus = (appointmentId: string) =>
+  prisma.appointment.findUnique({ where: { id: appointmentId }, select: { status: true } });
 
 export interface FindAppointmentsFilter {
   startDate?: string | Date;
@@ -202,16 +170,18 @@ export const findAppointments = async (filters: FindAppointmentsFilter = {}) => 
     if (filters.startDate) {
       const start = new Date(filters.startDate);
       if (typeof filters.startDate === 'string' && !filters.startDate.includes('T')) {
-        start.setHours(0, 0, 0, 0);
+        where.date.gte = limaDayRange(filters.startDate).start;
+      } else {
+        where.date.gte = start;
       }
-      where.date.gte = start;
     }
     if (filters.endDate) {
       const end = new Date(filters.endDate);
       if (typeof filters.endDate === 'string' && !filters.endDate.includes('T')) {
-        end.setHours(23, 59, 59, 999);
+        where.date.lte = limaDayRange(filters.endDate).end;
+      } else {
+        where.date.lte = end;
       }
-      where.date.lte = end;
     }
   }
 
@@ -266,9 +236,7 @@ export const findBarberAppointments = async (filters: FindBarberAppointmentsFilt
   }
 
   if (filters.date) {
-    const [year, month, day] = filters.date.split('-').map(Number);
-    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
-    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+    const { start: startOfDay, end: endOfDay } = limaDayRange(filters.date);
     where.date = {
       gte: startOfDay,
       lte: endOfDay,
@@ -278,16 +246,18 @@ export const findBarberAppointments = async (filters: FindBarberAppointmentsFilt
     if (filters.startDate) {
       const start = new Date(filters.startDate);
       if (typeof filters.startDate === 'string' && !filters.startDate.includes('T')) {
-        start.setHours(0, 0, 0, 0);
+        where.date.gte = limaDayRange(filters.startDate).start;
+      } else {
+        where.date.gte = start;
       }
-      where.date.gte = start;
     }
     if (filters.endDate) {
       const end = new Date(filters.endDate);
       if (typeof filters.endDate === 'string' && !filters.endDate.includes('T')) {
-        end.setHours(23, 59, 59, 999);
+        where.date.lte = limaDayRange(filters.endDate).end;
+      } else {
+        where.date.lte = end;
       }
-      where.date.lte = end;
     }
   }
 
@@ -320,58 +290,45 @@ export const findBarberAppointments = async (filters: FindBarberAppointmentsFilt
   });
 };
 
-export const getBarberDailyStats = async (barberId: string, dateStr?: string) => {
-  let targetDate = new Date();
-  if (dateStr) {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    targetDate = new Date(year, month - 1, day, 12, 0, 0, 0);
-  }
-
-  const startOfDay = new Date(targetDate);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const endOfDay = new Date(targetDate);
-  endOfDay.setHours(23, 59, 59, 999);
+export const getBarberDailyStats = async (barberId?: string, dateStr?: string) => {
+  const targetDateString = dateStr || currentLimaDate();
+  const { start: startOfDay, end: endOfDay } = limaDayRange(targetDateString);
+  const targetDate = new Date(`${targetDateString}T12:00:00-05:00`);
 
   // Start & End of week (Monday to Sunday)
   const dayOfWeek = targetDate.getDay();
   const distanceToMonday = (dayOfWeek + 6) % 7;
-  const startOfWeek = new Date(targetDate);
-  startOfWeek.setDate(targetDate.getDate() - distanceToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfWeekDate = new Date(targetDate);
+  startOfWeekDate.setUTCDate(targetDate.getUTCDate() - distanceToMonday);
+  const weekStartString = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(startOfWeekDate);
+  const startOfWeek = limaDayRange(weekStartString).start;
 
   const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
+  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 7);
+  endOfWeek.setUTCMilliseconds(endOfWeek.getUTCMilliseconds() - 1);
 
   const [dayAppointments, weekAppointments] = await Promise.all([
     prisma.appointment.findMany({
       where: {
-        barberId,
+        ...(barberId ? { barberId } : {}),
         date: {
           gte: startOfDay,
           lte: endOfDay,
         },
       },
-      include: {
-        service: {
-          select: { price: true },
-        },
-      },
+      select: { status: true, priceAtBooking: true },
     }),
     prisma.appointment.findMany({
       where: {
-        barberId,
+        ...(barberId ? { barberId } : {}),
         date: {
           gte: startOfWeek,
           lte: endOfWeek,
         },
       },
-      include: {
-        service: {
-          select: { price: true },
-        },
-      },
+      select: { status: true, priceAtBooking: true },
     }),
   ]);
 
@@ -387,11 +344,11 @@ export const getBarberDailyStats = async (barberId: string, dateStr?: string) =>
     if (app.status === 'PENDING') pendingCount++;
     else if (app.status === 'CONFIRMED') {
       confirmedCount++;
-      projectedRevenue += app.service?.price || 0;
+      projectedRevenue += Number(app.priceAtBooking);
     } else if (app.status === 'COMPLETED') {
       completedCount++;
-      todayRevenue += app.service?.price || 0;
-      projectedRevenue += app.service?.price || 0;
+      todayRevenue += Number(app.priceAtBooking);
+      projectedRevenue += Number(app.priceAtBooking);
     } else if (app.status === 'CANCELED') {
       canceledCount++;
     }
@@ -402,7 +359,7 @@ export const getBarberDailyStats = async (barberId: string, dateStr?: string) =>
   for (const app of weekAppointments) {
     if (app.status === 'COMPLETED') {
       weekCompletedCount++;
-      weekRevenue += app.service?.price || 0;
+      weekRevenue += Number(app.priceAtBooking);
     }
   }
 

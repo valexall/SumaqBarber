@@ -1,93 +1,62 @@
-import { ArrowUpRight, Menu, Scissors, Sparkles, User } from 'lucide-react'
+import { ArrowUpRight, Menu, Scissors, User, X } from 'lucide-react'
+import { useState } from 'react'
 
-export function SiteHeader({ onOpenBooking, onOpenAccount, onOpenMirror, onOpenBarber, currentUser }) {
+export function SiteHeader({ onOpenBooking, onOpenAccount, onOpenBarber, currentUser }) {
+  const [mobileOpen, setMobileOpen] = useState(false)
   const initials = currentUser
     ? `${currentUser.firstName?.[0] || 'U'}${currentUser.lastName?.[0] || ''}`.toUpperCase()
     : null
+  const isStaff = ['BARBER', 'OWNER', 'ADMIN'].includes(currentUser?.role)
 
-  const isStaff = currentUser?.role === 'BARBER' || currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN'
+  const closeMobile = () => setMobileOpen(false)
+  const openBooking = () => { closeMobile(); onOpenBooking?.() }
 
   return (
     <header className="site-header">
-      <a className="brand" href="#top" aria-label="Sumaq Barber, inicio">
-        <span className="brand-mark"><Scissors size={17} strokeWidth={1.8} /></span>
-        <span>NOVA<span className="brand-muted">/</span><small>BARBERSHOP</small></span>
+      <a className="brand" href="#inicio" aria-label="Sumaq Barber, inicio" onClick={closeMobile}>
+        <span className="brand-mark"><Scissors size={18} strokeWidth={1.8} /></span>
+        <span>SUMAQ<small>BARBER</small></span>
       </a>
-      <nav className="desktop-nav" aria-label="Navegación principal">
-        <a href="#servicios">Servicios</a>
-        <a href="#estilos">Estilos</a>
-        <a href="#simulacion">Nosotros</a>
+
+      <nav className={`desktop-nav ${mobileOpen ? 'is-open' : ''}`} aria-label="Navegación principal">
+        <a href="#servicios" onClick={closeMobile}>Servicios</a>
+        <a href="#experiencia" onClick={closeMobile}>Experiencia</a>
+        <a href="#visitanos" onClick={closeMobile}>Visítanos</a>
+        <button type="button" className="mobile-nav-account" onClick={() => { closeMobile(); onOpenAccount?.() }}>
+          <User size={17} /> Mi cuenta
+        </button>
+        <button type="button" className="mobile-nav-booking" onClick={openBooking}>Reservar cita</button>
       </nav>
+
       <div className="header-actions">
+        <button
+          type="button"
+          className="header-account-btn"
+          onClick={onOpenAccount}
+          aria-label={currentUser ? `Cuenta de ${currentUser.firstName}` : 'Mi cuenta'}
+        >
+          {initials ? <span className="header-user-avatar">{initials}</span> : <User size={15} />}
+          <span>{currentUser ? currentUser.firstName : 'Mi cuenta'}</span>
+        </button>
         {isStaff ? (
-          <>
-            <button
-              type="button"
-              className="header-account-btn"
-              onClick={onOpenAccount}
-              aria-label={`Cuenta de ${currentUser.firstName}`}
-            >
-              {initials ? (
-                <span className="header-user-avatar">{initials}</span>
-              ) : (
-                <User size={14} />
-              )}
-              <span>{currentUser.firstName}</span>
-            </button>
-            <button
-              type="button"
-              className="header-cta header-cta--barber"
-              onClick={onOpenBarber}
-              aria-label="Abrir mi panel de barbero"
-            >
-              <Scissors size={15} aria-hidden="true" />
-              <span>Mi Panel Barbero</span>
-            </button>
-          </>
+          <button type="button" className="header-cta header-cta--barber" onClick={onOpenBarber}>
+            Mi panel
+          </button>
         ) : (
-          <>
-            <button
-              type="button"
-              className="header-account-btn"
-              onClick={onOpenAccount}
-              aria-label={currentUser ? `Cuenta de ${currentUser.firstName}` : 'Mi Cuenta'}
-            >
-              {initials ? (
-                <span className="header-user-avatar">{initials}</span>
-              ) : (
-                <User size={14} />
-              )}
-              <span>{currentUser ? currentUser.firstName : 'Mi Cuenta'}</span>
-            </button>
-            <button
-              type="button"
-              className="header-mirror-btn"
-              onClick={onOpenMirror}
-              aria-label="Probar peinado con espejo virtual"
-            >
-              <Sparkles size={13} aria-hidden="true" />
-              <span>Probar look</span>
-            </button>
-            <a
-              className="header-cta"
-              href="#reserva"
-              onClick={(e) => {
-                e.preventDefault();
-                onOpenBooking?.();
-              }}
-            >
-              Reservar ahora <ArrowUpRight size={16} aria-hidden="true" />
-            </a>
-          </>
+          <button type="button" className="header-cta" onClick={openBooking}>
+            Reservar <ArrowUpRight size={16} aria-hidden="true" />
+          </button>
         )}
       </div>
+
       <button
         className="mobile-menu"
         type="button"
-        aria-label="Abrir panel"
-        onClick={onOpenAccount}
+        aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen((open) => !open)}
       >
-        <Menu size={21} aria-hidden="true" />
+        {mobileOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
     </header>
   )

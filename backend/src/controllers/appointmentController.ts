@@ -1,17 +1,22 @@
 import { Request, Response } from 'express';
 import * as appointmentService from '../services/appointmentService';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { setSessionCookie } from '../utils/sessionCookie';
 
 export const createAppointment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const appointment = await appointmentService.createPublicAppointment(req.body);
+    const userId = (req as AuthenticatedRequest).user?.userId;
+    const appointment = await appointmentService.createPublicAppointment(req.body, userId);
+    if (appointment.sessionToken) setSessionCookie(res, appointment.sessionToken);
+    const { sessionToken: _sessionToken, ...safeAppointment } = appointment;
     res.status(201).json({
       success: true,
       message: '¡Cita reservada con éxito!',
-      data: appointment,
+      data: safeAppointment,
     });
   } catch (error: any) {
     console.error('Error creating appointment:', error.message);
-    res.status(400).json({
+    res.status(error.statusCode || 400).json({
       success: false,
       message: error.message || 'Error al procesar la reserva',
     });
@@ -143,14 +148,6 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
     const id = String(req.params.id);
     const { status, notes } = req.body;
 
-    if (!status) {
-      res.status(400).json({
-        success: false,
-        message: 'El estado es requerido (PENDING, CONFIRMED, COMPLETED, CANCELED)',
-      });
-      return;
-    }
-
     const updated = await appointmentService.updateAppointmentStatus(
       id,
       user.userId,
@@ -166,7 +163,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
     });
   } catch (error: any) {
     console.error('Error updating appointment status:', error.message);
-    res.status(400).json({
+    res.status(error.statusCode || 400).json({
       success: false,
       message: error.message || 'Error al actualizar el estado de la cita',
     });

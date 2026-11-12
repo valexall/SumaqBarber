@@ -22,8 +22,13 @@ async function main() {
     }
   }
 
-  // 2. Seed Barbers
-  const passwordHash = await bcrypt.hash('SumaqBarber2026', 10);
+  // 2. Seed Barbers only when an explicit development password was provided.
+  const seedPassword = process.env.SEED_BARBER_PASSWORD;
+  if (!seedPassword || seedPassword.length < 12) {
+    console.warn('Skipping demo barbers. Set SEED_BARBER_PASSWORD (12+ characters) to create them.');
+    return;
+  }
+  const passwordHash = await bcrypt.hash(seedPassword, 12);
   const defaultBarbers = [
     {
       firstName: 'Mateo',

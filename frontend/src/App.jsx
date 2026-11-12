@@ -1,212 +1,87 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Route, Routes } from 'react-router-dom'
 import { SiteHeader } from './components/layout/SiteHeader'
 import { ScrollExperience } from './components/landing/ScrollExperience'
+import { fetchMyProfile, logoutUser } from './services/api'
 import './App.css'
 
-const BookingModal = lazy(() =>
-  import('./components/booking/BookingModal').then((m) => ({ default: m.BookingModal }))
-)
-const UserAccountModal = lazy(() =>
-  import('./components/account/UserAccountModal').then((m) => ({ default: m.UserAccountModal }))
-)
-const VirtualMirrorModal = lazy(() =>
-  import('./components/mirror/VirtualMirrorModal').then((m) => ({ default: m.VirtualMirrorModal }))
-)
-const BarberDashboard = lazy(() =>
-  import('./components/barber/BarberDashboard').then((m) => ({ default: m.BarberDashboard }))
-)
+const BookingModal = lazy(() => import('./components/booking/BookingModal').then((module) => ({ default: module.BookingModal })))
+const UserAccountModal = lazy(() => import('./components/account/UserAccountModal').then((module) => ({ default: module.UserAccountModal })))
+const BarberDashboard = lazy(() => import('./components/barber/BarberDashboard').then((module) => ({ default: module.BarberDashboard })))
+
+const readCachedUser = () => {
+  try {
+    const cached = sessionStorage.getItem('sumaq_user')
+    return cached ? JSON.parse(cached) : null
+  } catch {
+    return null
+  }
+}
 
 function App() {
-  const [isBookingOpen, setIsBookingOpen] = useState(() => 
-    typeof window !== 'undefined' && (window.location.hash === '#reserva' || window.location.hash === '#reservar')
-  )
+  const [isBookingOpen, setIsBookingOpen] = useState(() => ['#reserva', '#reservar'].includes(window.location.hash))
   const [isAccountOpen, setIsAccountOpen] = useState(false)
-  const [isMirrorOpen, setIsMirrorOpen] = useState(() =>
-    typeof window !== 'undefined' && window.location.hash === '#espejo'
-  )
-  const [isBarberOpen, setIsBarberOpen] = useState(() =>
-    typeof window !== 'undefined' && (window.location.hash === '#barbero' || window.location.hash === '#panel-barbero')
-  )
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sumaq_user')
-      return saved ? JSON.parse(saved) : null
-    } catch {
-      return null
-    }
-  })
+  const [isBarberOpen, setIsBarberOpen] = useState(() => ['#barbero', '#panel-barbero'].includes(window.location.hash))
+  const [currentUser, setCurrentUser] = useState(readCachedUser)
+  const [isSessionLoading, setIsSessionLoading] = useState(true)
 
-  // Pre-cargar bundles de modales en tiempo ocioso para apertura instantánea sin latencia
+  const storeUser = useCallback((user) => {
+    setCurrentUser(user || null)
+    if (user) sessionStorage.setItem('sumaq_user', JSON.stringify(user))
+    else sessionStorage.removeItem('sumaq_user')
+  }, [])
+
   useEffect(() => {
-    const prefetch = () => {
-      import('./components/booking/BookingModal')
-      import('./components/account/UserAccountModal')
-      import('./components/mirror/VirtualMirrorModal')
-      import('./components/barber/BarberDashboard')
+    let active = true
+    fetchMyProfile()
+      .then((user) => { if (active) storeUser(user) })
+      .catch(() => { if (active) storeUser(null) })
+      .finally(() => { if (active) setIsSessionLoading(false) })
+    const clearExpiredSession = () => storeUser(null)
+    window.addEventListener('sumaq:session-expired', clearExpiredSession)
+    return () => {
+      active = false
+      window.removeEventListener('sumaq:session-expired', clearExpiredSession)
     }
-    if (typeof window.requestIdleCallback === 'function') {
-      const id = window.requestIdleCallback(prefetch, { timeout: 2500 })
-      return () => window.cancelIdleCallback(id)
-    } else {
-      const id = setTimeout(prefetch, 1200)
-      return () => clearTimeout(id)
-    }
-  }, [])
+  }, [storeUser])
 
-  // Sync user state on storage event or custom event
-  const refreshUser = useCallback(() => {
-    try {
-      const saved = localStorage.getItem('sumaq_user')
-      setCurrentUser(saved ? JSON.parse(saved) : null)
-    } catch {
-      setCurrentUser(null)
-    }
-  }, [])
-
-  const handleLogin = useCallback((user, token) => {
-    if (user && token) {
-      localStorage.setItem('sumaq_user', JSON.stringify(user))
-      localStorage.setItem('sumaq_token', token)
-      setCurrentUser(user)
-    }
-  }, [])
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('sumaq_user')
-    localStorage.removeItem('sumaq_token')
-    setCurrentUser(null)
-  }, [])
-
-  const handleUpdateUser = useCallback((updatedUser) => {
-    if (updatedUser) {
-      localStorage.setItem('sumaq_user', JSON.stringify(updatedUser))
-      setCurrentUser(updatedUser)
-    }
-  }, [])
+  const handleLogin = useCallback((user) => storeUser(user), [storeUser])
+  const handleLogout = useCallback(async () => {
+    try { await logoutUser() } catch { /* The local session still needs to end. */ }
+    storeUser(null)
+  }, [storeUser])
 
   const handleOpenBarber = useCallback(() => {
     setIsAccountOpen(false)
     setIsBookingOpen(false)
-    setIsMirrorOpen(false)
     setIsBarberOpen(true)
-    if (window.location.hash !== '#barbero') {
-      window.location.hash = '#barbero'
-    }
+    window.history.replaceState(null, '', '#barbero')
   }, [])
-
   const handleCloseBarber = useCallback(() => {
     setIsBarberOpen(false)
-    if (window.location.hash === '#barbero' || window.location.hash === '#panel-barbero') {
-      history.replaceState(null, '', window.location.pathname)
-    }
+    window.history.replaceState(null, '', window.location.pathname)
   }, [])
-
   const handleOpenBooking = useCallback(() => {
-    if (currentUser?.role === 'BARBER') {
-      handleOpenBarber()
-      return
-    }
+    if (currentUser?.role === 'BARBER') return handleOpenBarber()
     setIsBookingOpen(true)
+    window.history.replaceState(null, '', '#reserva')
   }, [currentUser, handleOpenBarber])
-
   const handleCloseBooking = useCallback(() => {
     setIsBookingOpen(false)
-    refreshUser()
-    if (window.location.hash === '#reserva' || window.location.hash === '#reservar') {
-      history.replaceState(null, '', window.location.pathname)
-    }
-  }, [refreshUser])
-
-  const handleOpenAccount = useCallback(() => {
-    refreshUser()
-    setIsAccountOpen(true)
-  }, [refreshUser])
-
-  const handleCloseAccount = useCallback(() => {
-    setIsAccountOpen(false)
-    refreshUser()
-    if (window.location.hash === '#cuenta' || window.location.hash === '#perfil') {
-      history.replaceState(null, '', window.location.pathname)
-    }
-  }, [refreshUser])
-
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [])
+  const handleOpenAccount = useCallback(() => setIsAccountOpen(true), [])
+  const handleCloseAccount = useCallback(() => setIsAccountOpen(false), [])
   const handleSwitchToBooking = useCallback(() => {
     setIsAccountOpen(false)
-    if (currentUser?.role === 'BARBER') {
-      handleOpenBarber()
-      return
-    }
-    setIsBookingOpen(true)
-  }, [currentUser, handleOpenBarber])
-
-  const handleOpenMirror = useCallback(() => {
-    setIsMirrorOpen(true)
-  }, [])
-
-  const handleCloseMirror = useCallback(() => {
-    setIsMirrorOpen(false)
-    if (window.location.hash === '#espejo') {
-      history.replaceState(null, '', window.location.pathname)
-    }
-  }, [])
-
-  // Intercept any click to #reserva, #cuenta, #espejo, or #barbero across the entire application
-  useEffect(() => {
-    const handleAnchorClick = (e) => {
-      const anchor = e.target.closest('a[href="#reserva"], a[href="#reservar"]')
-      if (anchor) {
-        e.preventDefault()
-        handleOpenBooking()
-      }
-      const accountAnchor = e.target.closest('a[href="#cuenta"], a[href="#perfil"]')
-      if (accountAnchor) {
-        e.preventDefault()
-        handleOpenAccount()
-      }
-      const mirrorAnchor = e.target.closest('a[href="#espejo"]')
-      if (mirrorAnchor) {
-        e.preventDefault()
-        handleOpenMirror()
-      }
-      const barberAnchor = e.target.closest('a[href="#barbero"], a[href="#panel-barbero"]')
-      if (barberAnchor) {
-        e.preventDefault()
-        handleOpenBarber()
-      }
-    }
-
-    const handleHashChange = () => {
-      if (window.location.hash === '#reserva' || window.location.hash === '#reservar') {
-        setIsBookingOpen(true)
-      } else if (window.location.hash === '#cuenta' || window.location.hash === '#perfil') {
-        setIsAccountOpen(true)
-      } else if (window.location.hash === '#espejo') {
-        setIsMirrorOpen(true)
-      } else if (window.location.hash === '#barbero' || window.location.hash === '#panel-barbero') {
-        setIsBarberOpen(true)
-      }
-    }
-
-    window.addEventListener('storage', refreshUser)
-    document.addEventListener('click', handleAnchorClick)
-    window.addEventListener('hashchange', handleHashChange)
-
-    return () => {
-      window.removeEventListener('storage', refreshUser)
-      document.removeEventListener('click', handleAnchorClick)
-      window.removeEventListener('hashchange', handleHashChange)
-    }
-  }, [handleOpenBooking, handleOpenAccount, handleOpenMirror, handleOpenBarber, refreshUser])
+    handleOpenBooking()
+  }, [handleOpenBooking])
 
   const barberView = (
-    <Suspense fallback={<div className="barber-os-root" />}>
+    <Suspense fallback={<div className="route-loading" role="status">Cargando agenda…</div>}>
       <BarberDashboard
         currentUser={currentUser}
-        onLogout={() => {
-          handleLogout()
-          handleCloseBarber()
-        }}
+        onLogout={async () => { await handleLogout(); handleCloseBarber() }}
         onBackToSite={handleCloseBarber}
       />
     </Suspense>
@@ -217,56 +92,51 @@ function App() {
       <SiteHeader
         onOpenBooking={handleOpenBooking}
         onOpenAccount={handleOpenAccount}
-        onOpenMirror={handleOpenMirror}
         onOpenBarber={handleOpenBarber}
         currentUser={currentUser}
       />
       <main>
         <ScrollExperience onOpenBooking={handleOpenBooking} />
       </main>
-
-      <Suspense fallback={null}>
+      <Suspense fallback={<span className="sr-only" role="status">Cargando…</span>}>
         {isBookingOpen && (
           <BookingModal
             key={currentUser?.id || 'guest'}
-            isOpen={isBookingOpen}
+            isOpen
             onClose={handleCloseBooking}
             currentUser={currentUser}
             onLogin={handleLogin}
-            onLogout={handleLogout}
           />
         )}
-
         {isAccountOpen && (
           <UserAccountModal
             key={currentUser?.id || 'guest'}
-            isOpen={isAccountOpen}
+            isOpen
             onClose={handleCloseAccount}
             currentUser={currentUser}
             onLogin={handleLogin}
             onLogout={handleLogout}
-            onUpdateUser={handleUpdateUser}
+            onUpdateUser={storeUser}
             onOpenBooking={handleSwitchToBooking}
             onOpenBarber={handleOpenBarber}
-          />
-        )}
-
-        {isMirrorOpen && (
-          <VirtualMirrorModal
-            isOpen={isMirrorOpen}
-            onClose={handleCloseMirror}
-            onOpenBooking={handleOpenBooking}
           />
         )}
       </Suspense>
     </div>
   )
 
+  const isStaff = ['BARBER', 'OWNER', 'ADMIN'].includes(currentUser?.role)
+  const protectedBarberView = isSessionLoading
+    ? <div className="route-loading" role="status">Validando sesión…</div>
+    : isStaff
+      ? barberView
+      : mainView
+
   return (
     <Routes>
-      <Route path="/barbero" element={barberView} />
-      <Route path="/" element={isBarberOpen ? barberView : mainView} />
-      <Route path="*" element={isBarberOpen ? barberView : mainView} />
+      <Route path="/barbero" element={protectedBarberView} />
+      <Route path="/" element={isBarberOpen ? protectedBarberView : mainView} />
+      <Route path="*" element={mainView} />
     </Routes>
   )
 }

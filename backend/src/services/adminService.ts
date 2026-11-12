@@ -1,20 +1,21 @@
 import prisma from '../config/prisma';
 import { Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { normalizePhone } from '../utils/normalize';
 
 export interface CreateBarberInput {
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
-  password?: string;
+  password: string;
   bio?: string;
   experience?: number;
 }
 
 export const listBarbers = async () => {
   const barbers = await prisma.user.findMany({
-    where: { role: Role.BARBER },
+    where: { role: Role.BARBER, isActive: true },
     select: {
       id: true,
       firstName: true,
@@ -59,21 +60,20 @@ export const createBarber = async (input: CreateBarberInput) => {
   }
 
   if (input.phone) {
-    const existingPhone = await prisma.user.findUnique({ where: { phone: input.phone } });
+    const existingPhone = await prisma.user.findUnique({ where: { phone: normalizePhone(input.phone) } });
     if (existingPhone) {
       throw new Error('Ya existe un usuario registrado con este número de teléfono.');
     }
   }
 
-  const defaultPassword = input.password || 'SumaqBarber2026';
-  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  const hashedPassword = await bcrypt.hash(input.password, 12);
 
   const newUser = await prisma.user.create({
     data: {
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
       email: input.email.trim().toLowerCase(),
-      phone: input.phone?.trim() || null,
+      phone: input.phone ? normalizePhone(input.phone) : null,
       password: hashedPassword,
       role: Role.BARBER,
       barberProfile: {
@@ -104,12 +104,26 @@ export const updateBarber = async (id: string, input: Partial<CreateBarberInput>
     throw new Error('Barbero no encontrado.');
   }
 
+  const normalizedEmail = input.email?.trim().toLowerCase();
+  if (normalizedEmail && normalizedEmail !== user.email) {
+    const existingEmail = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existingEmail) throw new Error('Ya existe un usuario registrado con este correo electrónico.');
+  }
+
+  const normalizedPhone = input.phone ? normalizePhone(input.phone) : undefined;
+  if (normalizedPhone && normalizedPhone !== user.phone) {
+    const existingPhone = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
+    if (existingPhone) throw new Error('Ya existe un usuario registrado con este número de teléfono.');
+  }
+
   const updated = await prisma.user.update({
     where: { id },
     data: {
       ...(input.firstName ? { firstName: input.firstName.trim() } : {}),
       ...(input.lastName ? { lastName: input.lastName.trim() } : {}),
-      ...(input.phone ? { phone: input.phone.trim() } : {}),
+      ...(normalizedEmail ? { email: normalizedEmail } : {}),
+      ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+      ...(input.password ? { password: await bcrypt.hash(input.password, 12) } : {}),
       ...(input.bio !== undefined || input.experience !== undefined
         ? {
             barberProfile: {
@@ -150,19 +164,8 @@ export const deleteBarber = async (id: string) => {
     throw new Error('Barbero no encontrado.');
   }
 
-  // Si tiene citas, podemos reasignarlas o eliminar en cascada si no hay restricciones
-  // O cambiar su rol a CUSTOMER para preservar el historial de citas
-  if (user._count.appointmentsAsBarber > 0) {
-    await prisma.appointment.deleteMany({
-      where: { barberId: id, status: 'PENDING' },
-    });
-  }
-
-  await prisma.user.delete({
-    where: { id },
-  });
-
-  return { success: true, message: 'Barbero eliminado correctamente' };
+  await prisma.user.update({ where: { id }, data: { isActive: false } });
+  return { success: true, message: 'Barbero desactivado; su historial se conservó.' };
 };
 
 export const listCustomers = async () => {
@@ -180,8 +183,9 @@ export const listCustomers = async () => {
           id: true,
           date: true,
           status: true,
+          priceAtBooking: true,
           service: {
-            select: { name: true, price: true },
+            select: { name: true },
           },
         },
         orderBy: { date: 'desc' },
@@ -196,7 +200,7 @@ export const listCustomers = async () => {
     const canceledAppointments = c.appointmentsAsCustomer.filter((a) => a.status === 'CANCELED').length;
     const totalSpent = c.appointmentsAsCustomer
       .filter((a) => a.status === 'COMPLETED')
-      .reduce((sum, a) => sum + (a.service?.price || 0), 0);
+      .reduce((sum, a) => sum + Number(a.priceAtBooking), 0);
     const lastAppointment = c.appointmentsAsCustomer[0]?.date || null;
 
     return {

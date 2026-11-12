@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { X, UserPlus, Scissors, Mail, Phone, Lock, Sparkles, Award, Loader2, AlertCircle } from 'lucide-react'
 import { createAdminBarber } from '../../services/api'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 
 export function AddBarberModal({ isOpen, onClose, onBarberCreated }) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('SumaqBarber2026')
+  const [password, setPassword] = useState('')
   const [bio, setBio] = useState('')
   const [experience, setExperience] = useState('5')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const dialogRef = useRef(null)
+  useDialogFocus(dialogRef, isOpen)
 
   if (!isOpen) return null
 
@@ -24,7 +27,10 @@ export function AddBarberModal({ isOpen, onClose, onBarberCreated }) {
       return
     }
 
-    const token = localStorage.getItem('sumaq_token')
+    if (password.length < 12) {
+      setErrorMsg('La contraseña temporal debe tener al menos 12 caracteres.')
+      return
+    }
     setIsSubmitting(true)
 
     try {
@@ -34,11 +40,10 @@ export function AddBarberModal({ isOpen, onClose, onBarberCreated }) {
           lastName: lastName.trim(),
           email: email.trim(),
           phone: phone.trim() || undefined,
-          password: password.trim() || undefined,
+          password: password.trim(),
           bio: bio.trim() || undefined,
           experience: Number(experience) || 1,
-        },
-        token
+        }
       )
 
       onBarberCreated(newBarber)
@@ -51,10 +56,18 @@ export function AddBarberModal({ isOpen, onClose, onBarberCreated }) {
   }
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
-      <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+    <div className="admin-modal-overlay" onClick={onClose} role="presentation">
+      <div
+        className="admin-modal-card"
+        onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-barber-title"
+      >
         <div className="admin-modal-header">
-          <h3>
+          <h3 id="add-barber-title">
             <Scissors size={18} color="#f59e0b" />
             <span>Contratar / Registrar Barbero</span>
           </h3>
@@ -76,8 +89,11 @@ export function AddBarberModal({ isOpen, onClose, onBarberCreated }) {
               <div className="admin-input-group">
                 <label><Sparkles size={12} /> Nombres</label>
                 <input
-                  type="text"
+                  type="password"
                   required
+                  minLength={12}
+                  autoComplete="new-password"
+                  placeholder="Mínimo 12 caracteres"
                   placeholder="Ej. Mateo"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}

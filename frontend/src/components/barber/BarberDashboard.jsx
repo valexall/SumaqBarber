@@ -43,7 +43,7 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
     weekCompletedCount: 0,
     weekRevenue: 0,
   })
-  const [isLoading, setIsLoading] = useState(() => Boolean(localStorage.getItem('sumaq_token')))
+  const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [updatingId, setUpdatingId] = useState(null)
 
@@ -59,8 +59,6 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
     }, 3500)
   }, [])
 
-  const token = localStorage.getItem('sumaq_token')
-
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTimeMs(Date.now())
@@ -70,14 +68,13 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
 
   const loadData = useCallback(
     async (dateParam = selectedDate, isSilent = false) => {
-      if (!token) return
       if (!isSilent) setIsLoading(true)
       setIsRefreshing(true)
 
       try {
         const [appData, statsData] = await Promise.all([
-          fetchBarberAppointments(dateParam, token),
-          fetchBarberStats(token),
+          fetchBarberAppointments({ date: dateParam }),
+          fetchBarberStats(dateParam),
         ])
         setAppointments(appData || [])
         if (statsData) setStats(statsData)
@@ -88,7 +85,7 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
         setIsRefreshing(false)
       }
     },
-    [token, selectedDate, showToast]
+    [selectedDate, showToast]
   )
 
   useEffect(() => {
@@ -111,7 +108,7 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
   const handleStatusChange = async (appointmentId, newStatus) => {
     setUpdatingId(appointmentId)
     try {
-      await updateAppointmentStatus(appointmentId, newStatus, token)
+      await updateAppointmentStatus(appointmentId, newStatus)
       setAppointments((prev) =>
         prev.map((a) => (a.id === appointmentId ? { ...a, status: newStatus } : a))
       )
@@ -137,7 +134,6 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
       await updateAppointmentStatus(
         cancelModalItem.id,
         'CANCELED',
-        token,
         cancelReason.trim() || undefined
       )
       setAppointments((prev) =>
@@ -219,7 +215,7 @@ export function BarberDashboard({ currentUser, onLogout, onBackToSite }) {
 
       <main className="barber-os-content">
         {activeSection === 'BARBERS' && (
-          <BarbersManagementTab showToast={showToast} />
+          <BarbersManagementTab showToast={showToast} currentUser={currentUser} />
         )}
 
         {activeSection === 'CUSTOMERS' && (

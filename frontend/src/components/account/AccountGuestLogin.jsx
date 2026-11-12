@@ -41,10 +41,10 @@ export function AccountGuestLogin({
         password: loginPassword,
       })
 
-      if (res.user && res.token) {
+      if (res.user) {
         setSuccessMsg('¡Bienvenido de nuevo!')
         setTimeout(() => {
-          onLogin?.(res.user, res.token)
+          onLogin?.(res.user)
         }, 300)
       } else {
         throw new Error('Respuesta de autenticación incompleta')

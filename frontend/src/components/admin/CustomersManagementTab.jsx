@@ -8,19 +8,17 @@ export function CustomersManagementTab({ showToast }) {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const token = localStorage.getItem('sumaq_token')
-
   const loadCustomers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const data = await fetchAdminCustomers(token)
+      const data = await fetchAdminCustomers()
       setCustomers(data)
     } catch (err) {
       showToast?.(err.message || 'Error al cargar directorio de clientes', 'error')
     } finally {
       setIsLoading(false)
     }
-  }, [token, showToast])
+  }, [showToast])
 
   useEffect(() => {
     const timer = setTimeout(() => {

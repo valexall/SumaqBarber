@@ -18,9 +18,9 @@ export const getServices = async () => {
     orderBy: { price: 'asc' },
   });
 
-  cachedServices = services;
+  cachedServices = services.map((service) => ({ ...service, price: Number(service.price) }));
   lastServicesFetch = now;
-  return services;
+  return cachedServices;
 };
 
 export const getBarbers = async () => {
@@ -30,7 +30,7 @@ export const getBarbers = async () => {
   }
 
   const barbers = await prisma.user.findMany({
-    where: { role: Role.BARBER },
+    where: { role: Role.BARBER, isActive: true },
     select: {
       id: true,
       firstName: true,

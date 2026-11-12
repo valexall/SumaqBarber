@@ -12,25 +12,24 @@ import { fetchAdminBarbers, deleteAdminBarber } from '../../services/api'
 import { AddBarberModal } from './AddBarberModal'
 import './AdminManagement.css'
 
-export function BarbersManagementTab({ showToast }) {
+export function BarbersManagementTab({ showToast, currentUser }) {
   const [barbers, setBarbers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
-
-  const token = localStorage.getItem('sumaq_token')
+  const canManageTeam = ['OWNER', 'ADMIN'].includes(currentUser?.role)
 
   const loadBarbers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const data = await fetchAdminBarbers(token)
+      const data = await fetchAdminBarbers()
       setBarbers(data)
     } catch (err) {
       showToast?.(err.message || 'Error al cargar el equipo de barberos', 'error')
     } finally {
       setIsLoading(false)
     }
-  }, [token, showToast])
+  }, [showToast])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -44,9 +43,9 @@ export function BarbersManagementTab({ showToast }) {
 
     setDeletingId(id)
     try {
-      await deleteAdminBarber(id, token)
+      await deleteAdminBarber(id)
       setBarbers((prev) => prev.filter((b) => b.id !== id))
-      showToast?.(`Barbero ${name} eliminado del equipo.`, 'info')
+      showToast?.(`Barbero ${name} desactivado; su historial se conservó.`, 'info')
     } catch (err) {
       showToast?.(err.message || 'No se pudo eliminar al barbero.', 'error')
     } finally {
@@ -66,6 +65,7 @@ export function BarbersManagementTab({ showToast }) {
           <h3>Equipo de Master Barbers ({barbers.length})</h3>
           <p>Gestiona a los profesionales activos en la sucursal y sus accesos.</p>
         </div>
+        {canManageTeam && (
         <button
           type="button"
           className="admin-add-btn"
@@ -74,6 +74,7 @@ export function BarbersManagementTab({ showToast }) {
           <UserPlus size={16} />
           <span>Contratar / Añadir Barbero</span>
         </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -134,6 +135,7 @@ export function BarbersManagementTab({ showToast }) {
                     </span>
                   )}
 
+                  {canManageTeam && (
                   <button
                     type="button"
                     className="admin-delete-btn"
@@ -144,6 +146,7 @@ export function BarbersManagementTab({ showToast }) {
                     <Trash2 size={13} />
                     <span>Dar de baja</span>
                   </button>
+                  )}
                 </div>
               </div>
             )
@@ -151,11 +154,11 @@ export function BarbersManagementTab({ showToast }) {
         </div>
       )}
 
-      <AddBarberModal
+      {canManageTeam && <AddBarberModal
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         onBarberCreated={handleBarberCreated}
-      />
+      />}
     </div>
   )
 }

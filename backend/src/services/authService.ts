@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/env';
+import { normalizePhone } from '../utils/normalize';
 
 export const generateToken = (userId: string, role: string) => {
   return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '14d' });
@@ -10,40 +11,41 @@ export const generateToken = (userId: string, role: string) => {
 
 export const register = async (data: {
   email: string;
-  password?: string;
+  password: string;
   firstName: string;
   lastName?: string;
   phone?: string;
-  role?: Role;
 }) => {
-  const { email, password, firstName, lastName, phone, role } = data;
+  const { email, password, firstName, lastName, phone } = data;
+  const normalizedEmail = email.trim().toLowerCase();
 
   const existingByEmail = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
   });
   if (existingByEmail) {
     throw new Error('Ya existe una cuenta con este correo electrónico. Por favor inicia sesión.');
   }
 
-  if (phone) {
+  const normalizedPhone = phone ? normalizePhone(phone) : undefined;
+  if (normalizedPhone) {
     const existingByPhone = await prisma.user.findFirst({
-      where: { phone },
+      where: { phone: normalizedPhone },
     });
     if (existingByPhone) {
       throw new Error('Ya existe una cuenta con este teléfono. Por favor inicia sesión.');
     }
   }
 
-  const hashedPassword = await bcrypt.hash(password || `Sumaq_${Date.now()}`, 10);
+  const hashedPassword = await bcrypt.hash(password, 12);
 
   const user = await prisma.user.create({
     data: {
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       firstName,
       lastName: lastName || 'Cliente',
-      phone: phone || null,
-      role: role || Role.CUSTOMER,
+      phone: normalizedPhone || null,
+      role: Role.CUSTOMER,
     },
   });
 
@@ -68,17 +70,17 @@ export const login = async (data: { email?: string; credential?: string; passwor
         where: { email: credential.toLowerCase() },
       })
     : await prisma.user.findFirst({
-        where: { phone: credential },
+        where: { phone: normalizePhone(credential) },
       });
 
-  if (!user) {
-    throw new Error('No se encontró una cuenta con ese correo o teléfono.');
+  if (!user) throw new Error('Credenciales incorrectas.');
+
+  if (!user.isActive) {
+    throw new Error('Esta cuenta está desactivada. Contacta al administrador.');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    throw new Error('Contraseña incorrecta.');
-  }
+  if (!isPasswordValid) throw new Error('Credenciales incorrectas.');
 
   const token = generateToken(user.id, user.role);
   const { password: _, ...userWithoutPassword } = user;
@@ -116,7 +118,7 @@ export const updateProfile = async (
     data: {
       ...(data.firstName ? { firstName: data.firstName.trim() } : {}),
       ...(data.lastName !== undefined ? { lastName: data.lastName.trim() } : {}),
-      ...(data.phone !== undefined ? { phone: data.phone.trim() } : {}),
+      ...(data.phone !== undefined ? { phone: data.phone ? normalizePhone(data.phone) : null } : {}),
     },
     select: {
       id: true,

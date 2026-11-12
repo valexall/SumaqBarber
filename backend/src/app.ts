@@ -2,8 +2,11 @@ import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import router from './routes';
 import { errorHandler } from './middlewares/errorHandler';
+import { securityHeaders } from './middlewares/security';
 
 const app: Application = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
 // CORS with landing domain allowlist
 const rawAllowedOrigins = [
@@ -36,7 +39,8 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(securityHeaders);
+app.use(express.json({ limit: '256kb' }));
 
 // Main Router (to be configured later)
 app.get('/health', (req: Request, res: Response) => {

@@ -4,6 +4,7 @@ import { fetchServices, fetchBarbers, createAppointment, loginUser } from '../..
 import { BookingSuccessView } from './BookingSuccessView'
 import { BookingLoginForm } from './BookingLoginForm'
 import { BookingFormFields } from './BookingFormFields'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 import './BookingModal.css'
 
 const getTodayString = () => {
@@ -46,6 +47,7 @@ export function BookingModal({
   const [loadingInitial, setLoadingInitial] = useState(true)
 
   const modalRef = useRef(null)
+  useDialogFocus(modalRef, isOpen)
 
   // Clean close animation handler
   const handleRequestClose = useCallback(() => {
@@ -83,6 +85,9 @@ export function BookingModal({
         if (servicesData.length > 0) {
           setSelectedServiceId((prev) => (prev ? prev : servicesData[0].id))
         }
+      })
+      .catch((error) => {
+        if (isMounted) setErrorMsg(error.message || 'No se pudieron cargar los servicios.')
       })
       .finally(() => {
         if (isMounted) setLoadingInitial(false)
@@ -123,8 +128,8 @@ export function BookingModal({
         password: loginPassword,
       })
 
-      if (res.user && res.token) {
-        onLogin?.(res.user, res.token)
+      if (res.user) {
+        onLogin?.(res.user)
         setCustomerName(`${res.user.firstName} ${res.user.lastName || ''}`.trim())
         setCustomerPhone(res.user.phone || '')
         setCustomerEmail(res.user.email)
@@ -158,16 +163,14 @@ export function BookingModal({
       return
     }
 
-    if (!currentUser && customerPassword.length < 6) {
-      setErrorMsg('La contraseña debe tener al menos 6 caracteres.')
+    if (!currentUser && customerPassword.length < 8) {
+      setErrorMsg('La contraseña debe tener al menos 8 caracteres.')
       return
     }
 
     setIsLoading(true)
     try {
       const combinedDateTime = new Date(`${date}T${time}:00`)
-      const token = localStorage.getItem('sumaq_token')
-
       const payload = {
         serviceId: selectedServiceId,
         date: combinedDateTime.toISOString(),
@@ -178,15 +181,15 @@ export function BookingModal({
         ...(!currentUser
           ? {
               customerEmail: customerEmail.trim(),
-              customerPassword: customerPassword,
+              password: customerPassword,
             }
           : {}),
       }
 
-      const res = await createAppointment(payload, token)
+      const res = await createAppointment(payload)
 
-      if (!currentUser && res.token && res.user) {
-        onLogin?.(res.user, res.token)
+      if (!currentUser && res.user) {
+        onLogin?.(res.user)
       }
 
       setSuccessData(res)
@@ -215,6 +218,7 @@ export function BookingModal({
       <div
         className={`booking-card ${isAnimatingOut ? 'is-closing' : 'is-open'}`}
         ref={modalRef}
+        tabIndex={-1}
       >
         <div className="booking-glow booking-glow--top" />
         <div className="booking-glow booking-glow--bottom" />

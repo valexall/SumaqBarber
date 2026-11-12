@@ -1,192 +1,128 @@
-import * as appointmentRepository from '../repositories/appointmentRepository';
-import prisma from '../config/prisma';
+import { AppointmentStatus, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { Role } from '@prisma/client';
-import * as serviceService from './serviceService';
+import prisma from '../config/prisma';
+import * as appointmentRepository from '../repositories/appointmentRepository';
+import { HttpError } from '../utils/httpError';
+import type { BookingInput } from '../validation/schemas';
 import * as authService from './authService';
+import * as serviceService from './serviceService';
+import { normalizePhone } from '../utils/normalize';
 
-export interface PublicBookingInput {
-  customerName: string;
-  customerPhone: string;
-  customerEmail?: string;
-  password?: string;
-  customerId?: string;
-  serviceId: string;
-  barberId?: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:mm (e.g., "10:30")
-  notes?: string;
-}
+export type PublicBookingInput = BookingInput;
 
-export const createPublicAppointment = async (input: PublicBookingInput) => {
-  const { customerName, customerPhone, customerEmail, password, customerId, serviceId, date, time, notes } = input;
+const getLimaSchedule = (date: Date) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Lima', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value || '';
+  return { weekday: value('weekday'), minutes: Number(value('hour')) * 60 + Number(value('minute')) };
+};
 
-  if (!customerName || !customerPhone || !serviceId || !date || !time) {
-    throw new Error('Por favor completa todos los campos requeridos (nombre, teléfono, servicio, fecha y hora).');
+export const createPublicAppointment = async (input: PublicBookingInput, authenticatedUserId?: string) => {
+  const { customerName, customerPhone, customerEmail, password, serviceId, date, notes } = input;
+  const appointmentDate = new Date(date);
+  if (Number.isNaN(appointmentDate.getTime()) || appointmentDate.getTime() < Date.now() + 15 * 60 * 1000) {
+    throw new HttpError(400, 'Selecciona un horario futuro con al menos 15 minutos de anticipación.');
   }
 
-  // Combine date and time in local time (avoiding UTC timezone backward shift)
-  const [hours, minutes] = time.split(':').map(Number);
-  const [year, month, day] = date.includes('-')
-    ? date.split('-').map(Number)
-    : date.split('/').map(Number);
+  const service = await prisma.service.findFirst({ where: { id: serviceId, isActive: true } });
+  if (!service) throw new HttpError(404, 'El servicio seleccionado no existe o no está disponible.');
 
-  const appointmentDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-
-  if (isNaN(appointmentDate.getTime())) {
-    throw new Error('La fecha u hora seleccionada no es válida.');
+  const schedule = getLimaSchedule(appointmentDate);
+  if (schedule.weekday === 'Sun' || schedule.minutes < 9 * 60 || schedule.minutes + service.duration > 20 * 60) {
+    throw new HttpError(400, 'El horario debe estar entre lunes y sábado, de 9:00 a 20:00.');
   }
 
-  // Allow today and future dates (prevent past days)
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const selectedDay = new Date(year, month - 1, day, 0, 0, 0, 0);
-
-  if (selectedDay < startOfToday) {
-    throw new Error('No puedes agendar una cita en una fecha pasada.');
-  }
-
-  // Handle Barber assignment using memory cache
   const barbers = await serviceService.getBarbers();
+  if (barbers.length === 0) throw new HttpError(409, 'No hay barberos disponibles en el sistema.');
 
-  if (barbers.length === 0) {
-    throw new Error('No hay barberos disponibles en el sistema.');
-  }
-
-  const targetBarberId: string = input.barberId && input.barberId !== 'any' ? input.barberId : barbers[0].id;
-
-  // Clean customer credentials
-  const cleanPhone = customerPhone.trim();
-  const cleanEmail = customerEmail?.trim() || `${cleanPhone.replace(/\D/g, '') || Date.now()}@reserva.sumaqbarber.pe`;
-
-  // Service verification
-  const service = await prisma.service.findUnique({ where: { id: serviceId } });
-  if (!service) {
-    throw new Error('El servicio seleccionado no existe.');
-  }
-
-  // Customer lookup: si hay @ buscar por email unique; si no, por phone indexado (no OR ciego)
-  let existingCustomer = null;
-  if (customerId) {
-    existingCustomer = await prisma.user.findUnique({ where: { id: customerId } });
-  } else if (customerEmail && customerEmail.includes('@')) {
-    existingCustomer = await prisma.user.findUnique({
-      where: { email: cleanEmail.toLowerCase() },
-    });
-    if (!existingCustomer && cleanPhone) {
-      existingCustomer = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+  let targetBarberId: string | undefined;
+  if (input.barberId) {
+    if (!barbers.some((barber) => barber.id === input.barberId)) {
+      throw new HttpError(400, 'El barbero seleccionado no está disponible.');
     }
-  } else if (cleanPhone) {
-    existingCustomer = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+    const conflict = await appointmentRepository.findConflictingAppointment(input.barberId, appointmentDate, service.duration);
+    if (!conflict) targetBarberId = input.barberId;
+  } else {
+    for (const barber of barbers) {
+      const conflict = await appointmentRepository.findConflictingAppointment(barber.id, appointmentDate, service.duration);
+      if (!conflict) {
+        targetBarberId = barber.id;
+        break;
+      }
+    }
   }
+  if (!targetBarberId) throw new HttpError(409, 'No hay disponibilidad para ese horario. Elige otra hora.');
 
-  // Customer handling & Account Registration
-  let customer = existingCustomer;
-  let userToken: string | null = null;
+  const cleanPhone = normalizePhone(customerPhone);
+  const cleanEmail = customerEmail?.trim().toLowerCase();
+  let customer;
+  let sessionToken: string | undefined;
 
-  if (!customer) {
-    // New user registration
-    const nameParts = customerName.trim().split(' ');
-    const firstName = nameParts[0] || customerName;
-    const lastName = nameParts.slice(1).join(' ') || 'Cliente';
-    const rawPassword = password && password.trim().length >= 6 ? password.trim() : `Sumaq_${Date.now()}`;
-    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+  if (authenticatedUserId) {
+    customer = await prisma.user.findUnique({ where: { id: authenticatedUserId } });
+    if (!customer) throw new HttpError(401, 'La sesión no corresponde a un usuario válido.');
+  } else {
+    if (!cleanEmail || !password) {
+      throw new HttpError(400, 'El correo y la contraseña son obligatorios para tu primera reserva.');
+    }
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ email: cleanEmail }, { phone: cleanPhone }] }, select: { id: true },
+    });
+    if (existing) throw new HttpError(409, 'Ya existe una cuenta con ese correo o teléfono. Inicia sesión para reservar.');
 
+    const nameParts = customerName.trim().split(/\s+/);
     customer = await prisma.user.create({
       data: {
-        firstName,
-        lastName,
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(' ') || 'Cliente',
         phone: cleanPhone,
         email: cleanEmail,
-        password: hashedPassword,
+        password: await bcrypt.hash(password, 12),
         role: Role.CUSTOMER,
       },
     });
-
-    userToken = authService.generateToken(customer.id, customer.role);
-  } else {
-    // Existing customer: If password provided, verify it
-    if (password && password.trim()) {
-      const isMatch = await bcrypt.compare(password.trim(), customer.password);
-      if (!isMatch) {
-        throw new Error('Ya existe una cuenta con este correo/teléfono. La contraseña ingresada es incorrecta.');
-      }
-      userToken = authService.generateToken(customer.id, customer.role);
-    } else {
-      userToken = authService.generateToken(customer.id, customer.role);
-    }
-
-    if (!customer.phone && cleanPhone) {
-      await prisma.user.update({
-        where: { id: customer.id },
-        data: { phone: cleanPhone },
-      });
-    }
+    sessionToken = authService.generateToken(customer.id, customer.role);
   }
 
-  // Create the appointment atomically in a $transaction (check slot conflict + insert)
   const appointment = await appointmentRepository.createAppointmentWithTransaction({
     customerId: customer.id,
     barberId: targetBarberId,
     serviceId,
     date: appointmentDate,
     durationMinutes: service.duration,
+    priceAtBooking: service.price,
     notes: notes?.trim() || undefined,
   });
 
-  // Generate Booking Code & WhatsApp Confirmation URL
   const bookingCode = `SB-${appointment.id.slice(0, 6).toUpperCase()}`;
   const barberShopPhone = process.env.WHATSAPP_PHONE || '51987111222';
-  const whatsappMsg = `¡Hola Sumaq Barber! 👋 Confirmo mi reserva ${bookingCode} a nombre de ${customer.firstName} ${customer.lastName}.\n✂️ Servicio: ${service.name} (S/ ${service.price})\n📅 Fecha: ${date}\n⏰ Hora: ${time} hrs.\n¡Quedo a la espera de su confirmación!`;
+  const appointmentLabel = new Intl.DateTimeFormat('es-PE', {
+    timeZone: 'America/Lima', dateStyle: 'medium', timeStyle: 'short',
+  }).format(appointmentDate);
+  const whatsappMsg = `¡Hola Sumaq Barber! Confirmo mi reserva ${bookingCode} a nombre de ${customer.firstName} ${customer.lastName}.\nServicio: ${service.name} (S/ ${service.price})\nFecha: ${appointmentLabel}.`;
   const whatsappUrl = `https://wa.me/${barberShopPhone}?text=${encodeURIComponent(whatsappMsg)}`;
+  const { password: _password, ...customerSafe } = customer;
 
-  const { password: _, ...customerSafe } = customer;
-
-  return {
-    appointment,
-    user: customerSafe,
-    token: userToken,
-    bookingCode,
-    whatsappUrl,
-  };
+  return { appointment, user: customerSafe, sessionToken, bookingCode, whatsappUrl };
 };
 
-export const getAppointments = async (filters?: appointmentRepository.FindAppointmentsFilter) => {
-  return appointmentRepository.findAppointments(filters);
-};
+export const getAppointments = async (filters?: appointmentRepository.FindAppointmentsFilter) =>
+  appointmentRepository.findAppointments(filters);
 
-export const getMyAppointments = async (customerId: string) => {
-  return appointmentRepository.findAppointmentsByCustomer(customerId);
-};
+export const getMyAppointments = async (customerId: string) =>
+  appointmentRepository.findAppointmentsByCustomer(customerId);
 
-export const cancelAppointment = async (appointmentId: string, customerId?: string) => {
-  return appointmentRepository.cancelAppointment(appointmentId, customerId);
-};
+export const cancelAppointment = async (appointmentId: string, customerId?: string) =>
+  appointmentRepository.cancelAppointment(appointmentId, customerId);
 
 export const getBarberAppointments = async (
   userId: string,
   userRole: string,
-  query: {
-    barberId?: string;
-    date?: string;
-    startDate?: string;
-    endDate?: string;
-    status?: string;
-  }
+  query: { barberId?: string; date?: string; startDate?: string; endDate?: string; status?: string }
 ) => {
-  // If user is BARBER, enforce barberId to be their own userId
-  const effectiveBarberId =
-    userRole === 'OWNER' || userRole === 'ADMIN'
-      ? query.barberId || userId
-      : userId;
-
-  return appointmentRepository.findBarberAppointments({
-    barberId: effectiveBarberId,
-    date: query.date,
-    startDate: query.startDate,
-    endDate: query.endDate,
-    status: query.status,
-  });
+  const effectiveBarberId = userRole === 'OWNER' || userRole === 'ADMIN' ? query.barberId : userId;
+  return appointmentRepository.findBarberAppointments({ ...query, barberId: effectiveBarberId });
 };
 
 export const getBarberDailyStats = async (
@@ -194,34 +130,28 @@ export const getBarberDailyStats = async (
   userRole: string,
   query: { barberId?: string; date?: string }
 ) => {
-  const effectiveBarberId =
-    userRole === 'OWNER' || userRole === 'ADMIN'
-      ? query.barberId || userId
-      : userId;
-
+  const effectiveBarberId = userRole === 'OWNER' || userRole === 'ADMIN' ? query.barberId : userId;
   return appointmentRepository.getBarberDailyStats(effectiveBarberId, query.date);
+};
+
+const allowedTransitions: Record<AppointmentStatus, AppointmentStatus[]> = {
+  PENDING: ['CONFIRMED', 'CANCELED'],
+  CONFIRMED: ['COMPLETED', 'CANCELED'],
+  COMPLETED: [],
+  CANCELED: [],
 };
 
 export const updateAppointmentStatus = async (
   appointmentId: string,
   userId: string,
   userRole: string,
-  status: string,
+  status: AppointmentStatus,
   notes?: string
 ) => {
-  const validStatuses: string[] = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELED'];
-  const upperStatus = status?.toUpperCase();
-
-  if (!validStatuses.includes(upperStatus)) {
-    throw new Error('Estado de cita no válido. Debe ser PENDING, CONFIRMED, COMPLETED o CANCELED.');
+  const current = await appointmentRepository.findAppointmentStatus(appointmentId);
+  if (!current) throw new HttpError(404, 'La cita no existe.');
+  if (current.status !== status && !allowedTransitions[current.status].includes(status)) {
+    throw new HttpError(409, `No se puede cambiar una cita ${current.status} a ${status}.`);
   }
-
-  return appointmentRepository.updateAppointmentStatus(
-    appointmentId,
-    userId,
-    upperStatus as any,
-    userRole,
-    notes
-  );
+  return appointmentRepository.updateAppointmentStatus(appointmentId, userId, status, userRole, notes);
 };
-
