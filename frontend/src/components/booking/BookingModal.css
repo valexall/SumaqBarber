@@ -248,7 +248,8 @@
 }
 
 .booking-input-wrap input,
-.booking-select-wrap select {
+.booking-select-wrap select,
+.booking-field > input {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
@@ -262,12 +263,14 @@
   width: 100%;
 }
 
-.booking-input-wrap input::placeholder {
+.booking-input-wrap input::placeholder,
+.booking-field > input::placeholder {
   color: rgba(255, 255, 255, 0.32);
 }
 
 .booking-input-wrap input:focus,
-.booking-select-wrap select:focus {
+.booking-select-wrap select:focus,
+.booking-field > input:focus {
   background: rgba(91, 135, 255, 0.08);
   border-color: #5b87ff;
   box-shadow: 0 0 0 3px rgba(91, 135, 255, 0.22);
@@ -767,17 +770,21 @@
 .auth-user-icon { color: #e2b675; }
 .booking-input-wrap input,
 .booking-select-wrap select,
+.booking-field > input,
 .booking-service-card,
 .booking-time-pill {
   background: rgba(255, 255, 255, 0.045);
   border-color: rgba(255, 255, 255, 0.14);
 }
 .booking-input-wrap input:focus,
-.booking-select-wrap select:focus {
+.booking-select-wrap select:focus,
+.booking-field > input:focus {
   background: rgba(212, 155, 85, 0.08);
   border-color: #d49b55;
   box-shadow: 0 0 0 3px rgba(212, 155, 85, 0.2);
 }
+.booking-field > input { color: #f4efe4; }
+.booking-field > input::placeholder { color: rgba(244, 239, 228, .36); }
 .booking-service-card.is-selected,
 .booking-time-pill.is-selected,
 .booking-submit-btn {
@@ -787,7 +794,9 @@
   box-shadow: 0 8px 24px rgba(212, 155, 85, 0.28);
 }
 .booking-service-card.is-selected .service-card-title,
-.booking-time-pill.is-selected { color: #17120c; }
+.booking-service-card.is-selected .service-card-desc,
+.booking-time-pill.is-selected { color: #21180f; }
+.booking-service-card.is-selected .service-card-desc { opacity: .78; }
 .booking-submit-btn:hover:not(:disabled) { background: #e4b16f; box-shadow: 0 10px 28px rgba(212, 155, 85, 0.36); }
 .auth-link-btn { color: #e2b675; }
 .booking-login-banner {
@@ -904,7 +913,29 @@
 .booking-wizard-actions { align-items: center; display: flex; gap: 12px; margin-top: 2px; }
 .booking-back-btn { align-items: center; background: transparent; border: 0; color: #b7aea0; cursor: pointer; display: inline-flex; flex: 0 0 auto; font-size: 11px; gap: 6px; padding: 12px 0; }
 .booking-back-btn:hover { color: #f4efe4; }
-.booking-submit-btn--wizard { flex: 1; height: 54px; margin-top: 0; }
+.booking-submit-btn--wizard {
+  background: #f0e9dc;
+  border: 1px solid #d49b55;
+  color: #21180f;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 800;
+  height: 60px;
+  line-height: 1.2;
+  margin-top: 0;
+  min-height: 60px;
+  padding: 0 24px;
+  text-shadow: none;
+}
+.booking-submit-btn--wizard:hover:not(:disabled) {
+  background: #fffaf0;
+  color: #17120c;
+  box-shadow: 0 10px 28px rgba(212, 155, 85, 0.3);
+}
+.booking-submit-btn--wizard svg {
+  color: #8c5720;
+  flex: 0 0 auto;
+}
 .booking-submit-btn--final { flex: 1; font-size: 13px; height: 58px; margin-top: 0; }
 
 /* Responsive queries */
@@ -937,5 +968,16 @@
   .booking-booking-summary { align-items: flex-start; flex-direction: column; gap: 10px; }
   .booking-wizard-actions { align-items: stretch; }
   .booking-back-btn { padding: 0 4px; }
-  .booking-submit-btn--final, .booking-submit-btn--wizard { min-height: 56px; }
+  .booking-submit-btn--final, .booking-submit-btn--wizard { min-height: 58px; }
+}
+
+/* Prevent Chromium autofill from replacing the dark Sumaq field surface. */
+.booking-form--wizard input:-webkit-autofill,
+.booking-form--wizard input:-webkit-autofill:hover,
+.booking-form--wizard input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f4efe4;
+  -webkit-box-shadow: 0 0 0 1000px #2a2824 inset;
+  border: 1px solid rgba(212, 155, 85, 0.42);
+  caret-color: #f4efe4;
+  transition: background-color 9999s ease-in-out 0s;
 }

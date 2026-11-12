@@ -41,6 +41,6 @@ export const validateQuery = (schema: ZodType) => (
     return;
   }
 
-  req.query = result.data as Request['query'];
+  res.locals.validatedQuery = result.data;
   next();
 };

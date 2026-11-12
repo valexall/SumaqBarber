@@ -25,7 +25,7 @@ export const createAppointment = async (req: Request, res: Response): Promise<vo
 
 export const getAvailability = async (req: Request, res: Response): Promise<void> => {
   try {
-    const availability = await appointmentService.getAvailability(req.query as {
+    const availability = await appointmentService.getAvailability(res.locals.validatedQuery as {
       date: string;
       serviceId: string;
       barberId?: string;
