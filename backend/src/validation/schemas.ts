@@ -33,6 +33,12 @@ export const bookingSchema = z.object({
   notes: z.string().trim().max(500).optional(),
 }).strict();
 
+export const availabilityQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe tener formato YYYY-MM-DD.'),
+  serviceId: z.string().uuid(),
+  barberId: z.string().uuid().optional(),
+}).strict();
+
 export const appointmentStatusSchema = z.object({
   status: z.enum(['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELED']),
   notes: z.string().trim().max(500).optional(),

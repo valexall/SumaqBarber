@@ -23,6 +23,24 @@ export const createAppointment = async (req: Request, res: Response): Promise<vo
   }
 };
 
+export const getAvailability = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const availability = await appointmentService.getAvailability(req.query as {
+      date: string;
+      serviceId: string;
+      barberId?: string;
+    });
+    res.setHeader('Cache-Control', 'private, max-age=15');
+    res.status(200).json({ success: true, data: availability });
+  } catch (error: any) {
+    console.error('Error fetching appointment availability:', error.message);
+    res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message || 'Error al obtener disponibilidad',
+    });
+  }
+};
+
 export const getAppointments = async (req: Request, res: Response): Promise<void> => {
   try {
     const { startDate, endDate, limit, page, barberId, status } = req.query;

@@ -18,6 +18,17 @@ const getLimaSchedule = (date: Date) => {
   return { weekday: value('weekday'), minutes: Number(value('hour')) * 60 + Number(value('minute')) };
 };
 
+const getLimaDateRange = (date: string) => ({
+  start: new Date(`${date}T00:00:00.000-05:00`),
+  end: new Date(`${date}T23:59:59.999-05:00`),
+});
+
+const getLimaSlot = (date: string, minutes: number) => {
+  const hours = Math.floor(minutes / 60).toString().padStart(2, '0');
+  const mins = (minutes % 60).toString().padStart(2, '0');
+  return new Date(`${date}T${hours}:${mins}:00-05:00`);
+};
+
 export const createPublicAppointment = async (input: PublicBookingInput, authenticatedUserId?: string) => {
   const { customerName, customerPhone, customerEmail, password, serviceId, date, notes } = input;
   const appointmentDate = new Date(date);
@@ -105,6 +116,62 @@ export const createPublicAppointment = async (input: PublicBookingInput, authent
   const { password: _password, ...customerSafe } = customer;
 
   return { appointment, user: customerSafe, sessionToken, bookingCode, whatsappUrl };
+};
+
+export const getAvailability = async (query: {
+  date: string;
+  serviceId: string;
+  barberId?: string;
+}) => {
+  const service = await prisma.service.findFirst({
+    where: { id: query.serviceId, isActive: true },
+    select: { id: true, duration: true },
+  });
+  if (!service) throw new HttpError(404, 'El servicio seleccionado no existe o no está disponible.');
+
+  const { start } = getLimaDateRange(query.date);
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Lima',
+    weekday: 'short',
+  }).format(start);
+
+  const requestedBarbers = await prisma.user.findMany({
+    where: {
+      role: Role.BARBER,
+      isActive: true,
+      ...(query.barberId ? { id: query.barberId } : {}),
+    },
+    select: { id: true },
+  });
+
+  if (weekday === 'Sun' || requestedBarbers.length === 0) {
+    return { date: query.date, serviceId: service.id, slots: [] };
+  }
+
+  const barberIds = requestedBarbers.map((barber) => barber.id);
+  const appointments = await appointmentRepository.findAppointmentsForAvailability(start, barberIds);
+  const now = Date.now();
+  const slots = [];
+
+  for (let minutes = 9 * 60; minutes + service.duration <= 20 * 60; minutes += 30) {
+    const slotStart = getLimaSlot(query.date, minutes);
+    const slotEnd = new Date(slotStart.getTime() + service.duration * 60 * 1000);
+    const availableBarberIds = barberIds.filter((barberId) =>
+      !appointments.some((appointment) =>
+        appointment.barberId === barberId &&
+        appointment.date < slotEnd &&
+        appointment.endAt > slotStart
+      )
+    );
+
+    slots.push({
+      time: `${Math.floor(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`,
+      available: slotStart.getTime() >= now + 15 * 60 * 1000 && availableBarberIds.length > 0,
+      availableBarberIds,
+    });
+  }
+
+  return { date: query.date, serviceId: service.id, slots, generatedAt: new Date().toISOString() };
 };
 
 export const getAppointments = async (filters?: appointmentRepository.FindAppointmentsFilter) =>

@@ -146,6 +146,26 @@ export const findConflictingAppointment = async (
   });
 };
 
+export const findAppointmentsForAvailability = async (
+  date: Date,
+  barberIds: string[]
+) => {
+  const dayEnd = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+  return prisma.appointment.findMany({
+    where: {
+      barberId: { in: barberIds },
+      status: { not: 'CANCELED' },
+      date: { lt: dayEnd },
+      endAt: { gt: date },
+    },
+    select: {
+      barberId: true,
+      date: true,
+      endAt: true,
+    },
+  });
+};
+
 export const findAppointmentStatus = (appointmentId: string) =>
   prisma.appointment.findUnique({ where: { id: appointmentId }, select: { status: true } });
 

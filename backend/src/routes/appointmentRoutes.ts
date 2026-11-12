@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import * as appointmentController from '../controllers/appointmentController';
 import { authenticate, optionalAuthenticate, requireRole } from '../middlewares/authMiddleware';
-import { validateBody } from '../middlewares/validate';
+import { validateBody, validateQuery } from '../middlewares/validate';
 import { createRateLimiter } from '../middlewares/security';
-import { appointmentStatusSchema, bookingSchema } from '../validation/schemas';
+import { appointmentStatusSchema, availabilityQuerySchema, bookingSchema } from '../validation/schemas';
 
 const router = Router();
 
 router.post('/', createRateLimiter(60 * 60 * 1000, 12), optionalAuthenticate, validateBody(bookingSchema), appointmentController.createAppointment);
+router.get('/availability', validateQuery(availabilityQuerySchema), appointmentController.getAvailability);
 router.get('/', authenticate, requireRole(['OWNER', 'ADMIN']), appointmentController.getAppointments);
 router.get('/my-appointments', authenticate, appointmentController.getMyAppointments);
 router.get('/barber', authenticate, requireRole(['BARBER', 'OWNER', 'ADMIN']), appointmentController.getBarberAppointments);

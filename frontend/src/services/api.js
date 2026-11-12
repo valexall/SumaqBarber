@@ -56,6 +56,13 @@ export async function createAppointment(bookingData) {
   return payload.data
 }
 
+export async function fetchAvailability({ date, serviceId, barberId }) {
+  const query = new URLSearchParams({ date, serviceId })
+  if (barberId && barberId !== 'any') query.set('barberId', barberId)
+  const payload = await requestJson(`/appointments/availability?${query}`)
+  return payload?.data || { slots: [] }
+}
+
 export async function loginUser({ identifier, credential, password }) {
   const payload = await requestJson('/auth/login', {
     method: 'POST',

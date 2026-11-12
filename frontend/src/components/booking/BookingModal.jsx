@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Scissors } from 'lucide-react'
-import { fetchServices, fetchBarbers, createAppointment, loginUser } from '../../services/api'
+import { fetchServices, fetchBarbers, fetchAvailability, createAppointment, loginUser } from '../../services/api'
 import { BookingSuccessView } from './BookingSuccessView'
 import { BookingLoginForm } from './BookingLoginForm'
 import { BookingFormFields } from './BookingFormFields'
@@ -23,6 +23,7 @@ export function BookingModal({
 }) {
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const [authMode, setAuthMode] = useState('booking')
+  const [step, setStep] = useState(1)
   const [loginCredential, setLoginCredential] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -45,6 +46,9 @@ export function BookingModal({
   const [errorMsg, setErrorMsg] = useState('')
   const [successData, setSuccessData] = useState(null)
   const [loadingInitial, setLoadingInitial] = useState(true)
+  const [availability, setAvailability] = useState({ slots: [] })
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [availabilityError, setAvailabilityError] = useState('')
 
   const modalRef = useRef(null)
   useDialogFocus(modalRef, isOpen)
@@ -57,6 +61,7 @@ export function BookingModal({
       setSuccessData(null)
       setErrorMsg('')
       setAuthMode('booking')
+      setStep(1)
       onClose()
     }, 240)
   }, [onClose])
@@ -70,6 +75,38 @@ export function BookingModal({
       }
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || step < 2 || !selectedServiceId || !date) return
+
+    let isMounted = true
+    const loadAvailability = async () => {
+      setAvailabilityError('')
+      setLoadingAvailability(true)
+      try {
+        const data = await fetchAvailability({ date, serviceId: selectedServiceId, barberId: selectedBarberId })
+        if (!isMounted) return
+        setAvailability(data)
+        const availableTimes = (data.slots || [])
+          .filter((slot) => slot.available)
+          .map((slot) => slot.time)
+        setTime((currentTime) => availableTimes.includes(currentTime) ? currentTime : (availableTimes[0] || ''))
+      } catch (error) {
+        if (isMounted) {
+          setAvailability({ slots: [] })
+          setAvailabilityError(error.message || 'No se pudo consultar la disponibilidad.')
+        }
+      } finally {
+        if (isMounted) setLoadingAvailability(false)
+      }
+    }
+
+    loadAvailability()
+
+    return () => {
+      isMounted = false
+    }
+  }, [date, isOpen, selectedBarberId, selectedServiceId, step])
 
   // Fetch initial services & barbers when opened
   useEffect(() => {
@@ -155,6 +192,12 @@ export function BookingModal({
 
     if (!customerPhone.trim()) {
       setErrorMsg('Por favor ingresa un número de teléfono o WhatsApp.')
+      return
+    }
+
+    if (!time) {
+      setErrorMsg('Selecciona una hora disponible para continuar.')
+      setStep(2)
       return
     }
 
@@ -275,6 +318,7 @@ export function BookingModal({
           <BookingFormFields
             {...{
               services, selectedServiceId, setSelectedServiceId, loadingInitial,
+              step, setStep, availability, loadingAvailability, availabilityError,
               customerName, setCustomerName, customerPhone, setCustomerPhone,
               customerEmail, setCustomerEmail, customerPassword, setCustomerPassword,
               showPassword, setShowPassword, currentUser,

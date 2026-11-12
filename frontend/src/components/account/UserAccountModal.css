@@ -826,6 +826,53 @@
   transform: translateY(-1px);
 }
 
+/* Sumaq visual system: keep account flows continuous with the warm landing palette. */
+.account-card {
+  background: rgba(31, 28, 23, 0.94);
+  border-color: rgba(216, 163, 95, 0.25);
+}
+.account-glow--top { background: rgba(212, 155, 85, 0.22); }
+.account-glow--bottom { background: rgba(240, 233, 220, 0.1); }
+.account-avatar {
+  background: linear-gradient(135deg, #d49b55 0%, #8c5720 100%);
+  box-shadow: 0 6px 18px rgba(212, 155, 85, 0.32);
+}
+.account-badge,
+.account-tab-count {
+  background: rgba(212, 155, 85, 0.12);
+  border-color: rgba(212, 155, 85, 0.35);
+  color: #e2b675;
+}
+.account-tab.is-active { border-bottom-color: #d49b55; }
+.account-field input,
+.account-input-wrap input {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.account-field input:focus,
+.account-input-wrap input:focus {
+  background: rgba(212, 155, 85, 0.08);
+  border-color: #d49b55;
+  box-shadow: 0 0 0 3px rgba(212, 155, 85, 0.2);
+}
+.account-cta-btn,
+.account-save-btn,
+.account-book-btn,
+.account-staff-cta { background: #d49b55; color: #17120c; box-shadow: 0 6px 18px rgba(212, 155, 85, 0.28); }
+.account-cta-btn:hover,
+.account-save-btn:hover:not(:disabled),
+.account-book-btn:hover,
+.account-staff-cta:hover { background: #e4b16f; }
+.empty-icon { color: #d49b55; }
+.account-staff-banner {
+  background: linear-gradient(135deg, rgba(212, 155, 85, 0.14), rgba(212, 155, 85, 0.04));
+  border-color: rgba(212, 155, 85, 0.34);
+  box-shadow: 0 4px 14px rgba(212, 155, 85, 0.1);
+}
+.account-staff-info { color: #e2b675; }
+.account-staff-info strong { color: #f4efe4; }
+.account-staff-cta { border: 0; }
+
 @media (max-width: 540px) {
   .account-staff-banner {
     margin: 0 16px 14px;

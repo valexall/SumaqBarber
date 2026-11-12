@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { bookingSchema, registerSchema } from './schemas';
+import { availabilityQuerySchema, bookingSchema, registerSchema } from './schemas';
 
 const validBooking = {
   customerName: 'Ana Quispe',
@@ -26,5 +26,21 @@ test('public registration rejects privileged roles', () => {
     firstName: 'Owner',
     role: 'ADMIN',
   });
+
   assert.equal(result.success, false);
+});
+
+test('availability contract accepts a date, service and optional barber', () => {
+  assert.equal(availabilityQuerySchema.safeParse({
+    date: '2027-01-15',
+    serviceId: validBooking.serviceId,
+    barberId: '4a8f3f49-1f54-44c9-8ee1-9c4e6d3e2e8a',
+  }).success, true);
+});
+
+test('availability contract rejects malformed dates', () => {
+  assert.equal(availabilityQuerySchema.safeParse({
+    date: '15-01-2027',
+    serviceId: validBooking.serviceId,
+  }).success, false);
 });

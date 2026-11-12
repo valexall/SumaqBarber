@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { ArrowRight, CalendarDays, Clock3, MapPin, Scissors, Sparkles } from 'lucide-react'
 import './ScrollExperience.css'
 
@@ -9,8 +10,48 @@ const services = [
 ]
 
 export function ScrollExperience({ onOpenBooking }) {
+  const landingRef = useRef(null)
+
+  useEffect(() => {
+    const landing = landingRef.current
+    if (!landing) return undefined
+
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible')
+            revealObserver.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
+    )
+
+    landing.querySelectorAll('[data-reveal]').forEach((element) => revealObserver.observe(element))
+
+    let frameId = 0
+    const updateScrollProgress = () => {
+      frameId = 0
+      const progress = Math.min(Math.max(window.scrollY / Math.max(window.innerHeight, 1), 0), 1)
+      landing.style.setProperty('--hero-scroll', progress.toFixed(3))
+    }
+    const handleScroll = () => {
+      if (!frameId) frameId = window.requestAnimationFrame(updateScrollProgress)
+    }
+
+    updateScrollProgress()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      revealObserver.disconnect()
+      window.removeEventListener('scroll', handleScroll)
+      if (frameId) window.cancelAnimationFrame(frameId)
+    }
+  }, [])
+
   return (
-    <div className="landing" id="inicio">
+    <div className="landing" id="inicio" ref={landingRef}>
       <section className="landing-hero" aria-labelledby="hero-title">
         <img
           src="/poster-0001.webp"
@@ -20,7 +61,7 @@ export function ScrollExperience({ onOpenBooking }) {
           decoding="async"
         />
         <div className="landing-hero__shade" />
-        <div className="landing-hero__copy">
+        <div className="landing-hero__copy" data-reveal="hero-copy">
           <p className="landing-kicker"><span /> Barbería contemporánea · Lima</p>
           <h1 id="hero-title">Tu mejor versión<br /><em>empieza aquí.</em></h1>
           <p className="landing-lead">Un corte pensado para tu rostro, tu ritmo y tu identidad. Sin fórmulas; con oficio.</p>
@@ -36,15 +77,15 @@ export function ScrollExperience({ onOpenBooking }) {
         </div>
       </section>
 
-      <section className="landing-services" id="servicios" aria-labelledby="services-title">
-        <header className="section-heading">
+      <section className="landing-services" id="servicios" aria-labelledby="services-title" data-reveal="section">
+        <header className="section-heading" data-reveal="heading">
           <p className="landing-kicker"><span /> Carta de servicios</p>
           <h2 id="services-title">Precisión en cada<br /><em>detalle.</em></h2>
           <p>Precios claros, tiempos reales y una recomendación honesta antes de empezar.</p>
         </header>
         <div className="service-list">
           {services.map((service) => (
-            <article className="service-line" key={service.number}>
+            <article className="service-line" key={service.number} data-reveal="service">
               <span className="service-line__number">{service.number}</span>
               <Scissors size={19} aria-hidden="true" />
               <div><h3>{service.name}</h3><p>{service.detail}</p></div>
@@ -54,28 +95,28 @@ export function ScrollExperience({ onOpenBooking }) {
         </div>
       </section>
 
-      <section className="landing-method" id="experiencia" aria-labelledby="method-title">
-        <div className="landing-method__visual">
+      <section className="landing-method" id="experiencia" aria-labelledby="method-title" data-reveal="section">
+        <div className="landing-method__visual" data-reveal="visual">
           <span className="landing-method__monogram">S</span>
           <p>Oficio · criterio · cuidado</p>
         </div>
-        <div className="landing-method__copy">
+        <div className="landing-method__copy" data-reveal="copy">
           <p className="landing-kicker"><span /> El ritual Sumaq</p>
           <h2 id="method-title">No empezamos<br />con la máquina.</h2>
           <ol>
-            <li><b>01</b><div><strong>Escuchamos</strong><p>Entendemos tu rutina, referencias y lo que quieres evitar.</p></div></li>
-            <li><b>02</b><div><strong>Diseñamos</strong><p>Elegimos forma, proporción y acabado para tu tipo de cabello.</p></div></li>
-            <li><b>03</b><div><strong>Perfeccionamos</strong><p>Terminamos con detalle y te enseñamos a mantener el resultado.</p></div></li>
+            <li data-reveal="step"><b>01</b><div><strong>Escuchamos</strong><p>Entendemos tu rutina, referencias y lo que quieres evitar.</p></div></li>
+            <li data-reveal="step"><b>02</b><div><strong>Diseñamos</strong><p>Elegimos forma, proporción y acabado para tu tipo de cabello.</p></div></li>
+            <li data-reveal="step"><b>03</b><div><strong>Perfeccionamos</strong><p>Terminamos con detalle y te enseñamos a mantener el resultado.</p></div></li>
           </ol>
         </div>
       </section>
 
-      <section className="landing-visit" id="visitanos" aria-labelledby="visit-title">
-        <div>
+      <section className="landing-visit" id="visitanos" aria-labelledby="visit-title" data-reveal="section">
+        <div data-reveal="copy">
           <p className="landing-kicker"><span /> Tu próxima cita</p>
           <h2 id="visit-title">Haz espacio para<br /><em>verte bien.</em></h2>
         </div>
-        <div className="visit-details">
+        <div className="visit-details" data-reveal="details">
           <p><MapPin size={20} /><span><small>Ubicación</small>Centro Histórico, Lima</span></p>
           <p><Clock3 size={20} /><span><small>Horario</small>Lun–Sáb · 9:00–20:00</span></p>
           <p><CalendarDays size={20} /><span><small>Atención</small>Con reserva previa</span></p>
